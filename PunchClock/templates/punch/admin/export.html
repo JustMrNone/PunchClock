@@ -1,0 +1,32 @@
+<div id="export-data" class="tab-content">
+    <header class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Export Data</h1>
+            <p class="text-gray-600">Export employee data in various formats</p>
+        </div>
+    </header>
+
+    <!-- Export Options -->
+    <div class="bg-white rounded-xl p-6 shadow-md">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Choose Export Format</h3>
+        <form>
+            <div class="mb-4">
+                <label for="export-format" class="block text-sm font-medium text-gray-700">Select Format</label>
+                <select id="export-format" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="csv">CSV</option>
+                    <option value="json">JSON</option>
+                    <option value="excel">Excel</option>
+                    <option value="pdf">PDF</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="date-range" class="block text-sm font-medium text-gray-700">Date Range</label>
+                <input type="date" id="start-date" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-2" placeholder="Start Date">
+                <input type="date" id="end-date" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="End Date">
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Export Data</button>
+            </div>
+        </form>
+    </div>
+</div>

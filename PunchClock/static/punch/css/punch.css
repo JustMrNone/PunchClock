@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f8fafc;
+}
+
+.time-input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    text-align: center;
+    width: 100%;
+    color: #4b5563;
+}
+
+.time-input:focus {
+    outline: none;
+}
+
+.punch-btn {
+    transition: all 0.3s ease;
+    transform: scale(1);
+}
+
+.punch-btn:hover {
+    transform: scale(1.05);
+}
+
+.punch-btn:active {
+    transform: scale(0.98);
+}
+
+.quote-container {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+}
+
+.time-card {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.time-card:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.calendar-day {
+    transition: all 0.2s ease;
+    border-radius: 8px; /* Added border radius */
+    position: relative;
+    overflow: hidden;
+}
+
+.calendar-day:hover {
+    transform: translateY(-2px);
+    background-color: #f3f4f6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.calendar-day.selected {
+    background-color: #818cf8; /* Changed to a lighter indigo color for clicked state */
+    color: white;
+}
+
+/* Today's date will have a different color than selected */
+.calendar-day.ring-2 {
+    background-color: #4f46e5; /* Darker indigo for today */
+}
+
+.calendar-day.selected .text-blue-500,
+.calendar-day.selected .text-red-500,
+.calendar-day.ring-2 .text-blue-500,
+.calendar-day.ring-2 .text-red-500 {
+    color: #ffffff !important;
+}
+
+.sidebar {
+    transition: all 0.3s ease;
+}
+
+.sidebar-link {
+    transition: all 0.2s ease;
+}
+
+.sidebar-link:hover {
+    background-color: #eef2ff;
+}
+
+.sidebar-link.active {
+    background-color: #6366f1;
+    color: white;
+}
+
+.sidebar-link.active:hover {
+    background-color: #4f46e5;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(10px); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-fade-out {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+.time-entry {
+    transition: all 0.2s ease;
+}
+
+.time-entry:hover {
+    background-color: #f5f3ff;
+}
+
+/* Added styles for dynamically showing the current time */
+.current-time-container {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: white;
+    text-align: center;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    margin-top: 1rem;
+}
+
+.current-time {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}

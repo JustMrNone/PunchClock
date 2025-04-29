@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkTime Tracker | Calendar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'punch/css/punch.css' %}">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto px-4 py-12 max-w-4xl">  <!-- increased py-8 to py-12 -->
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-12">  <!-- increased mb-8 to mb-12 -->
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Calendar</h1>
+                <p class="text-gray-600">Track your schedule and add personal notes</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+                    <i class="fas fa-calendar-alt"></i>
+                </button>
+                <a href="{% url 'PunchClock:punchclock' %}" class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors">
+                    <i class="fas fa-clock mr-2"></i>Punch Card
+                </a>
+            </div>
+        </header>
+
+        <!-- Calendar Component -->
+        <div class="bg-white rounded-xl p-8 mb-8 time-card">  <!-- increased p-6 to p-8 -->
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-gray-800 date"></h3>
+                <div class="flex space-x-2">
+                    <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium">
+                        This Month
+                    </button>
+                    <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Day Labels -->
+            <div class="grid grid-cols-7 gap-2 mb-2">
+                <div class="text-center text-sm font-medium text-gray-600">Sun</div>
+                <div class="text-center text-sm font-medium text-gray-600">Mon</div>
+                <div class="text-center text-sm font-medium text-gray-600">Tue</div>
+                <div class="text-center text-sm font-medium text-gray-600">Wed</div>
+                <div class="text-center text-sm font-medium text-gray-600">Thu</div>
+                <div class="text-center text-sm font-medium text-gray-600">Fri</div>
+                <div class="text-center text-sm font-medium text-gray-600">Sat</div>
+            </div>
+
+            <div id="calendar-grid" class="grid grid-cols-7 gap-2">
+                <!-- Calendar days will be dynamically rendered here -->
+            </div>
+
+            <!-- Context Menu - Only for personal notes -->
+            <div id="context-menu" class="hidden absolute bg-white shadow-md rounded-lg p-2 z-50">
+                <button id="add-personal-note" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Add Personal Note</button>
+            </div>
+        </div>
+
+        <!-- Note Modal -->
+        <div id="custom-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-lg p-6 w-96">
+                <h3 id="modal-title" class="text-lg font-semibold text-gray-800 mb-4">Add Personal Note</h3>
+                <form id="modal-form">
+                    <div class="mb-4">
+                        <label for="modal-input" class="block text-sm font-medium text-gray-700">Note Details</label>
+                        <textarea id="modal-input" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows="3"></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="modal-cancel" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const calendarGrid = document.getElementById('calendar-grid');
+            const contextMenu = document.getElementById('context-menu');
+            const modal = document.getElementById('custom-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalInput = document.getElementById('modal-input');
+            const modalForm = document.getElementById('modal-form');
+            const modalCancel = document.getElementById('modal-cancel');
+            const todayBtn = document.querySelector('.fa-calendar-alt').parentElement;
+            const dateDisplay = document.querySelector('.date');
+            let selectedDate = null;
+            let currentDisplayMonth = new Date().getMonth();
+            let currentDisplayYear = new Date().getFullYear();
+
+            // Initialize state
+            let holidays = {};
+            let globalNotes = {};
+            let personalNotes = {};
+            let weekendDays = [];
+
+            // Load calendar settings and personal notes from backend
+            Promise.all([
+                fetch('/api/calendar-settings/get/'),
+                fetch('/api/personal-notes/get/')
+            ])
+            .then(responses => Promise.all(responses.map(r => r.json())))
+            .then(([calendarData, personalData]) => {
+                if (calendarData.success) {
+                    holidays = calendarData.holidays || {};
+                    globalNotes = calendarData.notes || {};
+                    weekendDays = (calendarData.weekendDays || []).map(day => Number(day)); // Convert to numbers
+                }
+                if (personalData.success) {
+                    personalNotes = personalData.notes || {};
+                }
+                renderCalendar(currentDisplayYear, currentDisplayMonth);
+            })
+            .catch(error => {
+                console.error('Error loading calendar data:', error);
+                renderCalendar(currentDisplayYear, currentDisplayMonth);
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('#context-menu') && !e.target.closest('#custom-modal')) {
+                    hideContextMenu();
+                }
+            });
+
+            document.addEventListener('contextmenu', function (e) {
+                if (e.target.closest('.calendar-day')) {
+                    e.preventDefault();
+                    const dayCell = e.target.closest('.calendar-day');
+                    selectedDate = dayCell.dataset.date;
+                    const rect = dayCell.getBoundingClientRect();
+                    showContextMenu(rect.left + window.scrollX, rect.top + window.scrollY);
+                } else {
+                    hideContextMenu();
+                }
+            });
+
+            function showContextMenu(x, y) {
+                contextMenu.style.display = 'block';
+                contextMenu.style.left = `${x}px`;
+                contextMenu.style.top = `${y}px`;
+            }
+
+            function hideContextMenu() {
+                contextMenu.style.display = 'none';
+            }
+
+            function showModal(title, placeholder, callback) {
+                modalTitle.textContent = title;
+                modalInput.value = placeholder || '';
+                modal.style.display = 'flex';
+
+                const handleSubmit = function(e) {
+                    e.preventDefault();
+                    callback(modalInput.value);
+                    modal.style.display = 'none';
+                    modalForm.removeEventListener('submit', handleSubmit);
+                };
+
+                const handleCancel = function() {
+                    modal.style.display = 'none';
+                    modalForm.removeEventListener('submit', handleSubmit);
+                    modalCancel.removeEventListener('click', handleCancel);
+                };
+
+                modalForm.addEventListener('submit', handleSubmit);
+                modalCancel.addEventListener('click', handleCancel);
+            }
+
+            function updateDateDisplay(date) {
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                dateDisplay.textContent = date.toLocaleDateString('en-US', options);
+            }
+
+            function savePersonalNote() {
+                fetch('/api/personal-notes/update/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        notes: personalNotes
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error('Error saving personal note:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error saving personal note:', error));
+            }
+
+            // Helper function to get CSRF token
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            function saveCalendarSettings() {
+                fetch('/api/calendar-settings/update/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        holidays: holidays,
+                        notes: globalNotes,
+                        weekendDays: weekendDays
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error('Error saving calendar settings:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error saving calendar settings:', error));
+            }
+            function renderCalendar(year, month) {
+                calendarGrid.innerHTML = '';
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const firstDayOfMonth = new Date(year, month, 1).getDay();
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Update the month/year display
+                const monthYearDisplay = document.querySelector('.date');
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                monthYearDisplay.textContent = `${months[month]} ${year}`;
+
+                // Add empty cells for days before the first day of the month
+                for (let i = 0; i < firstDayOfMonth; i++) {
+                    const emptyCell = document.createElement('div');
+                    emptyCell.classList.add('h-20', 'p-1', 'text-right');
+                    calendarGrid.appendChild(emptyCell);
+                }
+
+                // Create calendar days
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dayCell = document.createElement('div');
+                    dayCell.classList.add('h-20', 'p-1', 'text-right', 'calendar-day', 'cursor-pointer', 'border', 'border-gray-200', 'relative');
+
+                    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const date = new Date(year, month, day);
+                    date.setHours(0, 0, 0, 0);
+                    const dayOfWeek = date.getDay();
+                    dayCell.dataset.date = dateString;
+
+                    // Add day of week label
+                    const dayLabel = document.createElement('div');
+                    dayLabel.classList.add('text-xs', 'text-gray-500', 'absolute', 'top-1', 'left-1');
+                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    dayLabel.textContent = days[dayOfWeek];
+                    dayCell.appendChild(dayLabel);
+
+                    // Add click handler for date selection
+                    dayCell.addEventListener('click', function() {
+                        document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+                        this.classList.add('selected');
+                        selectedDate = dateString;
+                        updateDateDisplay(new Date(dateString));
+                    });
+
+                    // Highlight today's date
+                    if (date.getTime() === today.getTime()) {
+                        dayCell.classList.add('ring-2', 'ring-indigo-600', 'ring-offset-2');
+                        dayCell.classList.add('selected');
+                        selectedDate = dateString;
+                        updateDateDisplay(today);
+                    }
+
+                    // Apply weekend styling
+                    if (weekendDays.includes(dayOfWeek)) {
+                        dayCell.classList.add('bg-red-100');
+                    }
+
+                    // Apply holiday styling
+                    if (holidays[dateString]) {
+                        dayCell.classList.add('bg-red-100');
+                    }
+
+                    // Create day number container
+                    const dayContent = document.createElement('div');
+                    dayContent.classList.add('text-sm', 'font-medium', 'mt-4');
+                    dayContent.textContent = day;
+                    dayCell.appendChild(dayContent);
+
+                    // Add holiday indication if exists
+                    if (holidays[dateString]) {
+                        const holidayContent = document.createElement('div');
+                        holidayContent.classList.add('text-xs', 'text-red-500', 'mt-1');
+                        holidayContent.textContent = holidays[dateString];
+                        dayCell.appendChild(holidayContent);
+                    }
+
+                    // Add global note if exists
+                    if (globalNotes[dateString]) {
+                        const globalNoteContent = document.createElement('div');
+                        globalNoteContent.classList.add('text-xs', 'text-blue-500', 'mt-1');
+                        globalNoteContent.textContent = globalNotes[dateString];
+                        dayCell.appendChild(globalNoteContent);
+                    }
+
+                    // Add personal note if exists
+                    if (personalNotes[dateString]) {
+                        const personalNoteContent = document.createElement('div');
+                        personalNoteContent.classList.add('text-xs', 'text-green-500', 'mt-1');
+                        personalNoteContent.textContent = personalNotes[dateString];
+                        dayCell.appendChild(personalNoteContent);
+                    }
+
+                    calendarGrid.appendChild(dayCell);
+                }
+            }
+
+            // Handle month navigation
+            document.querySelector('.fa-chevron-left').parentElement.addEventListener('click', function() {
+                currentDisplayMonth--;
+                if (currentDisplayMonth < 0) {
+                    currentDisplayMonth = 11;
+                    currentDisplayYear--;
+                }
+                renderCalendar(currentDisplayYear, currentDisplayMonth);
+            });
+
+            document.querySelector('.fa-chevron-right').parentElement.addEventListener('click', function() {
+                currentDisplayMonth++;
+                if (currentDisplayMonth > 11) {
+                    currentDisplayMonth = 0;
+                    currentDisplayYear++;
+                }
+                renderCalendar(currentDisplayYear, currentDisplayMonth);
+            });
+
+            // Handle Today button click
+            todayBtn.addEventListener('click', function() {
+                const today = new Date();
+                currentDisplayMonth = today.getMonth();
+                currentDisplayYear = today.getFullYear();
+                renderCalendar(currentDisplayYear, currentDisplayMonth);
+            });
+
+            // Handle personal note addition
+            document.getElementById('add-personal-note').addEventListener('click', function() {
+                hideContextMenu();
+                showModal('Add Personal Note', personalNotes[selectedDate] || '', function(note) {
+                    if (note.trim()) {
+                        personalNotes[selectedDate] = note;
+                        savePersonalNote();
+                        renderCalendar(currentDisplayYear, currentDisplayMonth);
+                    }
+                });
+            });
+
+            // Initial render
+            renderCalendar(currentDisplayYear, currentDisplayMonth);
+        });
+    </script>
+</body>
+</html>

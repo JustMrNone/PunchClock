@@ -1,0 +1,89 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkTime Tracker | Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'punch/css/punch.css' %}">
+
+</head>
+<body class="min-h-screen">
+    <div class="flex">
+        <!-- Sidebar -->
+        {% include 'punch/admin/side.html' %}
+        
+        <!-- Main Content -->
+        <div class="flex-1 ml-64">
+            <div class="container mx-auto px-6 py-8">
+                <!-- Dashboard Tab -->
+                {% include 'punch/admin/dashboard.html' %}
+                
+                
+                <!-- Team Overview Tab -->
+                {% include 'punch/admin/teamoverview.html' %}
+                
+                <!-- Settings Tab -->
+                {% include 'punch/admin/settings.html' %}
+
+                <!-- Add Employee Tab -->
+                {% include 'punch/admin/add.html' %}
+
+                <!-- Export Data Tab -->
+                {% include 'punch/admin/export.html' %}
+
+                <!-- Employee View Tab -->
+                {% include 'punch/admin/employeeview.html' %}
+
+
+            </div>
+        </div>
+    </div>
+
+    <script src={% static 'punch/js/punch.js' %}>
+
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tab switching functionality
+            document.querySelectorAll('[data-tab]').forEach(tab => {
+                tab.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    // Remove active class from all tabs and content
+                    document.querySelectorAll('[data-tab]').forEach(t => {
+                        t.classList.remove('active');
+                    });
+                    document.querySelectorAll('.tab-content').forEach(c => {
+                        c.classList.remove('active');
+                    });
+
+                    // Add active class to clicked tab and corresponding content
+                    this.classList.add('active');
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(tabId).classList.add('active');
+
+                    // Save the active tab to localStorage
+                    localStorage.setItem('activeTab', tabId);
+                });
+            });
+
+            // Ensure the last active tab is active on page load
+            const savedTab = localStorage.getItem('activeTab');
+            if (savedTab) {
+                const savedTabElement = document.querySelector(`[data-tab="${savedTab}"]`);
+                if (savedTabElement) {
+                    savedTabElement.click();
+                }
+            } else {
+                const firstTab = document.querySelector('[data-tab]');
+                if (firstTab) {
+                    firstTab.click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

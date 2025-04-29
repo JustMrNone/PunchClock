@@ -1,0 +1,173 @@
+<div id="dashboard" class="tab-content active">
+    <header class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+            <p class="text-gray-600">Overview of employee time tracking</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="relative">
+                <input type="text" placeholder="Search employees..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+            </div>
+            <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+                <i class="fas fa-bell text-gray-600"></i>
+            </button>
+        </div>
+    </header>
+    
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-xl p-6 time-card">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm font-medium text-gray-700">Total Employees</p>
+                    <p class="text-2xl font-bold text-indigo-700">24</p>
+                </div>
+                <i class="fas fa-users text-3xl text-indigo-400"></i>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 time-card">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm font-medium text-gray-700">Active Today</p>
+                    <p class="text-2xl font-bold text-green-600">18</p>
+                </div>
+                <i class="fas fa-user-check text-3xl text-green-400"></i>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 time-card">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm font-medium text-gray-700">Pending Approval</p>
+                    <p class="text-2xl font-bold text-yellow-600">3</p>
+                </div>
+                <i class="fas fa-clock text-3xl text-yellow-400"></i>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl p-6 time-card">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="text-sm font-medium text-gray-700">Avg. Hours</p>
+                    <p class="text-2xl font-bold text-blue-600">7.8</p>
+                </div>
+                <i class="fas fa-chart-line text-3xl text-blue-400"></i>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-xl p-6 mb-8 time-card">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button class="flex items-center justify-center py-3 px-4 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100">
+                <i class="fas fa-check-circle mr-2"></i>
+                Approve Timesheets
+            </button>
+            <button class="flex items-center justify-center py-3 px-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100">
+                <i class="fas fa-file-export mr-2"></i>
+                Export This Week
+            </button>
+            <button class="flex items-center justify-center py-3 px-4 bg-red-50 text-red-700 rounded-lg hover:bg-red-100">
+                <i class="fas fa-clock mr-2"></i>
+                <a href="{% url 'PunchClock:punchclock' %}" class="text-red-700">Go to My Punch Clock</a>
+            </button>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="bg-white rounded-xl p-6 time-card">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Recent Time Entries</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">JD</div>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">John Doe</div>
+                                    <div class="text-sm text-gray-500">Engineering</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Today</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09:15 AM</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">05:30 PM</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">8.25 hours</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Approved</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                            <a href="#" class="text-red-600 hover:text-red-900">Delete</a>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">AS</div>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">Alice Smith</div>
+                                    <div class="text-sm text-gray-500">Marketing</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Today</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">08:45 AM</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">05:15 PM</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">8.50 hours</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                            <a href="#" class="text-red-600 hover:text-red-900">Delete</a>
+                        </td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">MJ</div>
+                                </div>
+                                <div class="ml-4">
+                                    <div class="text-sm font-medium text-gray-900">Michael Johnson</div>
+                                    <div class="text-sm text-gray-500">Sales</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Yesterday</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">09:00 AM</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">06:30 PM</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">9.50 hours</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Approved</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="#" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
+                            <a href="#" class="text-red-600 hover:text-red-900">Delete</a>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

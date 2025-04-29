@@ -1,0 +1,137 @@
+<div id="settings" class="tab-content">
+    <header class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Settings</h1>
+            <p class="text-gray-600">Manage application settings</p>
+        </div>
+    </header>
+    <div class="flex items-center justify-between mb-6 bg-white rounded-xl p-6 shadow-md mt-8">
+        <div class="flex items-center">
+            <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                <i class="fas fa-user text-2xl"></i>
+            </div>
+            <div class="ml-4">
+                <h3 class="text-xl font-semibold text-gray-800">Profile Picture</h3>
+                <p class="text-sm text-gray-600">Upload a picture to personalize your profile</p>
+            </div>
+        </div>
+        <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+            Upload Picture
+        </button>
+    </div>
+    <div class="bg-white rounded-xl p-6 shadow-md">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">General Settings</h3>
+        
+        <form>
+            <div class="mb-4">
+                <label for="company-name" class="block text-sm font-medium text-gray-700">Company Name</label>
+                <input type="text" id="company-name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter company name">
+            </div>
+            <div class="mb-4">
+                <label for="timezone" class="block text-sm font-medium text-gray-700">Timezone</label>
+                <select id="timezone" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="UTC">UTC</option>
+                    <option value="Europe/Stockholm">Central European Time (CET - Sweden)</option>
+                    <option value="Asia/Tehran">Iran Standard Time (IRST)</option>
+                    <option value="America/Los_Angeles">Pacific Standard Time (PST)</option>
+                    <option value="America/New_York">Eastern Standard Time (EST)</option>
+                    <option value="America/Chicago">Central Standard Time (CST)</option>
+                    <option value="Europe/London">Greenwich Mean Time (GMT)</option>
+                    <option value="Asia/Kolkata">India Standard Time (IST)</option>
+                    <option value="Asia/Tokyo">Japan Standard Time (JST)</option>
+                    <option value="Australia/Sydney">Australian Eastern Standard Time (AEST)</option>
+                    <option value="Pacific/Auckland">New Zealand Standard Time (NZST)</option>
+                    <option value="Pacific/Honolulu">Hawaii Standard Time (HST)</option>
+                    <option value="America/Anchorage">Alaska Standard Time (AKST)</option>
+                    <option value="Europe/Moscow">Moscow Standard Time (MSK)</option>
+                    <option value="Africa/Johannesburg">South Africa Standard Time (SAST)</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="work-hours" class="block text-sm font-medium text-gray-700">Default Work Hours</label>
+                <input type="number" id="work-hours" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter default work hours">
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Notifications</h3>
+        <form>
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" class="form-checkbox h-5 w-5 text-indigo-600">
+                    <span class="ml-2 text-gray-700">Enable email notifications</span>
+                </label>
+            </div>
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" class="form-checkbox h-5 w-5 text-indigo-600">
+                    <span class="ml-2 text-gray-700">Enable SMS notifications</span>
+                </label>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Calendar Settings</h3>
+        <form>
+            <div class="mb-4">
+                <p class="text-sm text-gray-600">Calendar Type: Gregorian</p>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Theme Settings</h3>
+        <form>
+            <div class="mb-4">
+                <label for="theme-type" class="block text-sm font-medium text-gray-700">Select Theme</label>
+                <select id="theme-type" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="system">System Default</option>
+                    <option value="dark">Dark Mode</option>
+                    <option value="light">Light Mode</option>
+                </select>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const timezoneSelect = document.getElementById('timezone');
+
+            // Load the saved timezone from localStorage or use the user's local timezone
+            const savedTimezone = localStorage.getItem('selected-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+            timezoneSelect.value = savedTimezone;
+
+            // Save the selected timezone to localStorage and update the current time
+            timezoneSelect.addEventListener('change', function() {
+                const selectedTimezone = this.value;
+                localStorage.setItem('selected-timezone', selectedTimezone);
+                updateTime();
+            });
+
+            function updateTime() {
+                const timezone = localStorage.getItem('selected-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const now = new Date().toLocaleString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: true });
+                const currentTimeElement = document.getElementById('current-time');
+                if (currentTimeElement) {
+                    currentTimeElement.textContent = now;
+                }
+            }
+
+            updateTime();
+            setInterval(updateTime, 60000); // Update every minute
+        });
+    </script>

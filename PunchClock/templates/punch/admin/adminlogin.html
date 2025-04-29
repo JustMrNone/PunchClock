@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkTime Tracker | Manager Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
+        }
+        .login-card {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        .login-card:hover {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .login-btn {
+            transition: all 0.3s ease;
+            transform: scale(1);
+        }
+        .login-btn:hover {
+            transform: scale(1.05);
+        }
+        .login-btn:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center bg-gray-100">
+    <div class="login-card bg-white rounded-xl shadow-md p-8 max-w-md w-full">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">Manager Login</h1>
+        <p class="text-gray-600 mb-6 text-center">Sign in to access the manager dashboard</p>
+        <form method="post" action="{% url 'PunchClock:adminlogin' %}">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                <input type="email" id="email" name="email" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your email">
+            </div>
+            <div class="mb-4">
+                <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" id="password" name="password" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your password">
+            </div>
+            <div class="flex items-center justify-between mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" class="form-checkbox h-5 w-5 text-indigo-600">
+                    <span class="ml-2 text-gray-700">Remember me</span>
+                </label>
+                <a href="#" class="text-sm text-indigo-600 hover:underline">Forgot password?</a>
+            </div>
+            <button type="submit" class="login-btn w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">Login</button>
+        </form>
+        {% if error %}
+        <p class="text-sm text-red-600 mt-4 text-center">{{ error }}</p>
+        {% endif %}
+        <p class="text-sm text-gray-600 mt-6 text-center">
+            Not a manager? <a href="{% url 'PunchClock:loginpunch' %}" class="text-indigo-600 hover:underline">Login as Employee</a>
+        </p>
+    </div>
+</body>
+</html>

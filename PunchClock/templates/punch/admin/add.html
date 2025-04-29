@@ -1,0 +1,108 @@
+<div id="add-employee" class="tab-content">
+    <header class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">Add Employee</h1>
+            <p class="text-gray-600">Fill out the form to add a new employee</p>
+        </div>
+    </header>
+
+    <!-- Add Employee Form -->
+    <div class="bg-white rounded-xl p-6 shadow-md">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Employee Details</h3>
+        <div class="flex items-center mb-4">
+            <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                <i class="fas fa-user text-2xl"></i>
+            </div>
+            <div class="ml-4 flex-1">
+                <label for="profile-picture" class="block text-sm font-medium text-gray-700">Profile Picture</label>
+            </div>
+            <button class="ml-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                Upload Picture
+            </button>
+        </div>
+        <form id="add-employee-form" method="post" action="{% url 'PunchClock:add_employee' %}">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="employee-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                <input type="text" id="employee-name" name="employee_name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter full name">
+            </div>
+            <div class="mb-4">
+                <label for="employee-email" class="block text-sm font-medium text-gray-700">Email Address</label>
+                <input type="email" id="employee-email" name="employee_email" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter email address">
+            </div>
+            <div class="mb-4">
+                <label for="employee-password" class="block text-sm font-medium text-gray-700">Password</label>
+                <input type="password" id="employee-password" name="employee_password" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter password">
+            </div>
+            <div class="mb-4">
+                <label for="employee-role" class="block text-sm font-medium text-gray-700">Role</label>
+                <select id="employee-role" name="employee_role" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="employee">Employee</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Administrator</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="employee-department" class="block text-sm font-medium text-gray-700">Department</label>
+                <input type="text" id="employee-department" name="employee_department" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter department">
+            </div>
+
+            <div class="flex justify-end">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add Employee</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Remove Employee</h3>
+        <form id="remove-employee-form">
+            <div class="mb-4">
+                <label for="department-select" class="block text-sm font-medium text-gray-700">Select Department</label>
+                <select id="department-select" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">-- Select Department --</option>
+                    <option value="engineering">Engineering</option>
+                    <option value="marketing">Marketing</option>
+                    <option value="sales">Sales</option>
+                    <option value="operations">Operations</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="employee-select" class="block text-sm font-medium text-gray-700">Select Employee</label>
+                <select id="employee-select" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled>
+                    <option value="">-- Select Employee --</option>
+                </select>
+            </div>
+            <div class="flex justify-end">
+                <button type="button" id="delete-employee-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700" disabled>Delete Employee</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('add-employee-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.success);
+                    this.reset();
+                } else {
+                    alert(result.error);
+                }
+            } catch (error) {
+                alert('An error occurred. Please try again.');
+            }
+        });
+    </script>
+</div>

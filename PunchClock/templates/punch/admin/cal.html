@@ -1,0 +1,347 @@
+<div class="bg-white rounded-xl p-6 mb-8 time-card">
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-semibold text-gray-800 date"></h3>
+        <div class="flex space-x-2">
+            <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 text-sm font-medium">
+                This Month
+            </button>
+            <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Day Labels -->
+    <div class="grid grid-cols-7 gap-2 mb-2">
+        <div class="text-center text-sm font-medium text-gray-600">Sun</div>
+        <div class="text-center text-sm font-medium text-gray-600">Mon</div>
+        <div class="text-center text-sm font-medium text-gray-600">Tue</div>
+        <div class="text-center text-sm font-medium text-gray-600">Wed</div>
+        <div class="text-center text-sm font-medium text-gray-600">Thu</div>
+        <div class="text-center text-sm font-medium text-gray-600">Fri</div>
+        <div class="text-center text-sm font-medium text-gray-600">Sat</div>
+    </div>
+
+    <div id="calendar-grid" class="grid grid-cols-7 gap-2">
+        <!-- Calendar days will be dynamically rendered here -->
+    </div>
+
+    <!-- Context Menu -->
+    <div id="context-menu" class="hidden absolute bg-white shadow-md rounded-lg p-2 z-50">
+        <button id="add-note" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Add Note</button>
+        <button id="mark-holiday" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mark as Holiday</button>
+        <button id="mark-weekend" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mark as Weekend</button>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-96">
+            <h3 id="modal-title" class="text-lg font-semibold text-gray-800 mb-4">Add Note</h3>
+            <form id="modal-form">
+                <div class="mb-4">
+                    <label for="modal-input" class="block text-sm font-medium text-gray-700">Details</label>
+                    <textarea id="modal-input" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows="3"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" id="modal-cancel" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const calendarGrid = document.getElementById('calendar-grid');
+            const contextMenu = document.getElementById('context-menu');
+            const modal = document.getElementById('custom-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalInput = document.getElementById('modal-input');
+            const modalForm = document.getElementById('modal-form');
+            const modalCancel = document.getElementById('modal-cancel');
+            const todayBtn = document.querySelector('.fa-calendar-alt').parentElement;
+            const dateDisplay = document.querySelector('.date');
+            let selectedDate = null;
+            let currentDisplayMonth = new Date().getMonth();
+            let currentDisplayYear = new Date().getFullYear();
+
+            // Initialize state
+            let holidays = {};
+            let notes = {};
+            let weekendDays = [];
+
+            // Load calendar settings from backend
+            fetch('/api/calendar-settings/get/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        holidays = data.holidays || {};
+                        notes = data.notes || {};
+                        weekendDays = (data.weekendDays || []).map(day => Number(day)); // Ensure numbers
+                        renderCalendar(currentDisplayYear, currentDisplayMonth);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading calendar settings:', error);
+                    renderCalendar(currentDisplayYear, currentDisplayMonth);
+                });
+
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('#context-menu') && !e.target.closest('#custom-modal')) {
+                    hideContextMenu();
+                }
+            });
+
+            document.addEventListener('contextmenu', function (e) {
+                if (e.target.closest('.calendar-day')) {
+                    e.preventDefault();
+                    const dayCell = e.target.closest('.calendar-day');
+                    selectedDate = dayCell.dataset.date;
+                    const rect = dayCell.getBoundingClientRect();
+                    showContextMenu(rect.left + window.scrollX, rect.top + window.scrollY);
+                } else {
+                    hideContextMenu();
+                }
+            });
+
+            function showContextMenu(x, y) {
+                contextMenu.style.display = 'block';
+                contextMenu.style.left = `${x}px`;
+                contextMenu.style.top = `${y}px`;
+            }
+
+            function hideContextMenu() {
+                contextMenu.style.display = 'none';
+            }
+
+            function showModal(title, placeholder, callback) {
+                modalTitle.textContent = title;
+                modalInput.value = placeholder || '';
+                modal.style.display = 'flex';
+
+                const handleSubmit = function(e) {
+                    e.preventDefault();
+                    callback(modalInput.value);
+                    modal.style.display = 'none';
+                    modalForm.removeEventListener('submit', handleSubmit);
+                };
+
+                const handleCancel = function() {
+                    modal.style.display = 'none';
+                    modalForm.removeEventListener('submit', handleSubmit);
+                    modalCancel.removeEventListener('click', handleCancel);
+                };
+
+                modalForm.addEventListener('submit', handleSubmit);
+                modalCancel.addEventListener('click', handleCancel);
+            }
+
+            function updateDateDisplay(date) {
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                dateDisplay.textContent = date.toLocaleDateString('en-US', options);
+            }
+
+            function saveCalendarSettings() {
+                fetch('/api/calendar-settings/update/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        holidays: holidays,
+                        notes: notes,
+                        weekendDays: weekendDays
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        console.error('Error saving calendar settings:', data.message);
+                    }
+                })
+                .catch(error => console.error('Error saving calendar settings:', error));
+            }
+
+            // Helper function to get CSRF token
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            function renderCalendar(year, month) {
+                calendarGrid.innerHTML = '';
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const firstDayOfMonth = new Date(year, month, 1).getDay();
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                // Update the month/year display
+                const monthYearDisplay = document.querySelector('.date');
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                monthYearDisplay.textContent = `${months[month]} ${year}`;
+
+                // Add empty cells for days before the first day of the month
+                for (let i = 0; i < firstDayOfMonth; i++) {
+                    const emptyCell = document.createElement('div');
+                    emptyCell.classList.add('h-20', 'p-1', 'text-right');
+                    calendarGrid.appendChild(emptyCell);
+                }
+
+                // Create calendar days
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dayCell = document.createElement('div');
+                    dayCell.classList.add('h-20', 'p-1', 'text-right', 'calendar-day', 'cursor-pointer', 'border', 'border-gray-200', 'relative');
+
+                    const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const date = new Date(year, month, day);
+                    date.setHours(0, 0, 0, 0);
+                    const dayOfWeek = date.getDay();
+                    
+                    dayCell.dataset.date = dateString;
+                    dayCell.dataset.dayOfWeek = dayOfWeek;
+
+                    // Add day of week label
+                    const dayLabel = document.createElement('div');
+                    dayLabel.classList.add('text-xs', 'text-gray-500', 'absolute', 'top-1', 'left-1');
+                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    dayLabel.textContent = days[dayOfWeek];
+                    dayCell.appendChild(dayLabel);
+
+                    // Add click handler for date selection
+                    dayCell.addEventListener('click', function() {
+                        document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+                        this.classList.add('selected');
+                        selectedDate = dateString;
+                        updateDateDisplay(new Date(dateString));
+                    });
+
+                    // Highlight today's date
+                    if (date.getTime() === today.getTime()) {
+                        dayCell.classList.add('ring-2', 'ring-indigo-600', 'ring-offset-2');
+                        dayCell.classList.add('selected');
+                        selectedDate = dateString;
+                        updateDateDisplay(today);
+                    }
+
+                    // Apply weekend styling if this day is marked as a weekend day
+                    if (weekendDays.includes(dayOfWeek)) {
+                        dayCell.classList.add('bg-red-100');
+                    }
+
+                    // Apply holiday styling
+                    if (holidays[dateString]) {
+                        dayCell.classList.add('bg-red-100');
+                    }
+
+                    // Create day number container
+                    const dayContent = document.createElement('div');
+                    dayContent.classList.add('text-sm', 'font-medium', 'mt-4');
+                    dayContent.textContent = day;
+                    dayCell.appendChild(dayContent);
+
+                    // Add holiday reason if exists
+                    if (holidays[dateString]) {
+                        const holidayContent = document.createElement('div');
+                        holidayContent.classList.add('text-xs', 'text-red-500', 'mt-1');
+                        holidayContent.textContent = holidays[dateString];
+                        dayCell.appendChild(holidayContent);
+                    }
+
+                    // Add note if exists
+                    if (notes[dateString]) {
+                        const noteContent = document.createElement('div');
+                        noteContent.classList.add('text-xs', 'text-blue-500', 'mt-1');
+                        noteContent.textContent = notes[dateString];
+                        dayCell.appendChild(noteContent);
+                    }
+
+                    calendarGrid.appendChild(dayCell);
+                }
+            }
+
+            // Handle month navigation
+            document.querySelector('.fa-chevron-left').parentElement.addEventListener('click', function() {
+                currentDisplayMonth--;
+                if (currentDisplayMonth < 0) {
+                    currentDisplayMonth = 11;
+                    currentDisplayYear--;
+                }
+                renderCalendar(currentDisplayYear, currentDisplayMonth);
+            });
+
+            document.querySelector('.fa-chevron-right').parentElement.addEventListener('click', function() {
+                currentDisplayMonth++;
+                if (currentDisplayMonth > 11) {
+                    currentDisplayMonth = 0;
+                    currentDisplayYear++;
+                }
+                renderCalendar(currentDisplayYear, currentDisplayMonth);
+            });
+
+            // Today button handler
+            todayBtn.addEventListener('click', function() {
+                const today = new Date();
+                currentDisplayMonth = today.getMonth();
+                currentDisplayYear = today.getFullYear();
+                renderCalendar(currentDisplayYear, currentDisplayMonth);
+            });
+
+            document.getElementById('add-note').addEventListener('click', function() {
+                hideContextMenu();
+                showModal('Add Note', notes[selectedDate] || '', function(note) {
+                    if (note.trim()) {
+                        notes[selectedDate] = note;
+                        saveCalendarSettings();
+                        renderCalendar(currentDisplayYear, currentDisplayMonth);
+                    }
+                });
+            });
+
+            document.getElementById('mark-holiday').addEventListener('click', function() {
+                hideContextMenu();
+                showModal('Holiday Reason', holidays[selectedDate] || '', function(reason) {
+                    if (reason.trim()) {
+                        holidays[selectedDate] = reason;
+                        saveCalendarSettings();
+                        renderCalendar(currentDisplayYear, currentDisplayMonth);
+                    }
+                });
+            });
+
+            document.getElementById('mark-weekend').addEventListener('click', function() {
+                hideContextMenu();
+                const dayCell = document.querySelector(`[data-date="${selectedDate}"]`);
+                if (!dayCell) return;
+                
+                const dayOfWeek = Number(dayCell.dataset.dayOfWeek); // Convert to number
+                
+                if (!weekendDays.includes(dayOfWeek)) {
+                    weekendDays.push(dayOfWeek);
+                } else {
+                    const index = weekendDays.indexOf(dayOfWeek);
+                    if (index > -1) {
+                        weekendDays.splice(index, 1);
+                    }
+                }
+                
+                saveCalendarSettings();
+                renderCalendar(currentDisplayYear, currentDisplayMonth);
+            });
+        });
+    </script>
+
+</div>
