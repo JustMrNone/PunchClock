@@ -10,3 +10,7 @@ class CalendarSettings(models.Model):
 class PersonalNote(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     notes = models.JSONField(default=dict)
+
+class CompanySettings(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    company_name = models.CharField(max_length=255, default="")

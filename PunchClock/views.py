@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 import json
-from .models import CalendarSettings, PersonalNote
+from .models import CalendarSettings, PersonalNote, CompanySettings
 # Create your views here.
 
 class Admin(LoginRequiredMixin, UserPassesTestMixin, View):
@@ -177,6 +177,48 @@ class UpdatePersonalNotesView(LoginRequiredMixin, View):
             personal_notes.save()
 
             return JsonResponse({'success': True, 'message': 'Personal notes updated successfully.'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class RemoveHolidayView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            holiday_to_remove = data.get('holiday')
+
+            if not holiday_to_remove:
+                return JsonResponse({'success': False, 'message': 'No holiday specified to remove.'}, status=400)
+
+            calendar_settings, _ = CalendarSettings.objects.get_or_create(user=request.user)
+            holidays = calendar_settings.holidays
+
+            if holiday_to_remove in holidays:
+                holidays.pop(holiday_to_remove)
+                calendar_settings.holidays = holidays
+                calendar_settings.save()
+                return JsonResponse({'success': True, 'message': 'Holiday removed successfully.'})
+            else:
+                return JsonResponse({'success': False, 'message': 'Holiday not found.'}, status=404)
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class UpdateCompanyNameView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            company_name = data.get('company_name', '').strip()
+
+            if not company_name:
+                return JsonResponse({'success': False, 'message': 'Company name cannot be empty.'}, status=400)
+
+            company_settings, created = CompanySettings.objects.get_or_create(user=request.user)
+            company_settings.company_name = company_name
+            company_settings.save()
+
+            return JsonResponse({'success': True, 'message': 'Company name updated successfully.'})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
 

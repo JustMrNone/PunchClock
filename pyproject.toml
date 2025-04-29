@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "punch-clock"
+version = "0.1.0"
+description = "A punch clock application for managing employee time tracking and holidays."
+authors = ["Kamyar Bashar <kamyar.bashar@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+django = "^5.2"
+psycopg2-binary = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

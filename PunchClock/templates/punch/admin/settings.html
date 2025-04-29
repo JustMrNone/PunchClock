@@ -25,7 +25,10 @@
         <form>
             <div class="mb-4">
                 <label for="company-name" class="block text-sm font-medium text-gray-700">Company Name</label>
-                <input type="text" id="company-name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter company name">
+                <div class="flex items-center">
+                    <input type="text" id="company-name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter company name" value="{{ company_name }}" disabled>
+                    <button id="edit-company-name" class="ml-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Edit</button>
+                </div>
             </div>
             <div class="mb-4">
                 <label for="timezone" class="block text-sm font-medium text-gray-700">Timezone</label>
@@ -57,38 +60,6 @@
         </form>
     </div>
 
-    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
-        <h3 class="text-xl font-semibold text-gray-800 mb-4">Notifications</h3>
-        <form>
-            <div class="mb-4">
-                <label class="flex items-center">
-                    <input type="checkbox" class="form-checkbox h-5 w-5 text-indigo-600">
-                    <span class="ml-2 text-gray-700">Enable email notifications</span>
-                </label>
-            </div>
-            <div class="mb-4">
-                <label class="flex items-center">
-                    <input type="checkbox" class="form-checkbox h-5 w-5 text-indigo-600">
-                    <span class="ml-2 text-gray-700">Enable SMS notifications</span>
-                </label>
-            </div>
-            <div class="flex justify-end">
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
-            </div>
-        </form>
-    </div>
-
-    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
-        <h3 class="text-xl font-semibold text-gray-800 mb-4">Calendar Settings</h3>
-        <form>
-            <div class="mb-4">
-                <p class="text-sm text-gray-600">Calendar Type: Gregorian</p>
-            </div>
-            <div class="flex justify-end">
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
-            </div>
-        </form>
-    </div>
 
     <div class="bg-white rounded-xl p-6 shadow-md mt-8">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Theme Settings</h3>
@@ -135,3 +106,42 @@
             setInterval(updateTime, 60000); // Update every minute
         });
     </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const editButton = document.getElementById('edit-company-name');
+        const companyNameInput = document.getElementById('company-name');
+
+        editButton.addEventListener('click', function() {
+            if (companyNameInput.disabled) {
+                companyNameInput.disabled = false;
+                companyNameInput.focus();
+                editButton.textContent = 'Save';
+            } else {
+                const companyName = companyNameInput.value;
+
+                fetch('/update-company-name/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ company_name: companyName })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Company name updated successfully.');
+                        companyNameInput.disabled = true;
+                        editButton.textContent = 'Edit';
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An unexpected error occurred.');
+                });
+            }
+        });
+    });
+</script>

@@ -33,6 +33,7 @@
     <div id="context-menu" class="hidden absolute bg-white shadow-md rounded-lg p-2 z-50">
         <button id="add-note" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Add Note</button>
         <button id="mark-holiday" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mark as Holiday</button>
+        <button id="remove-holiday" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Remove Holiday</button>
         <button id="mark-weekend" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mark as Weekend</button>
     </div>
 
@@ -320,6 +321,15 @@
                         renderCalendar(currentDisplayYear, currentDisplayMonth);
                     }
                 });
+            });
+
+            document.getElementById('remove-holiday').addEventListener('click', function() {
+                hideContextMenu();
+                if (holidays[selectedDate]) {
+                    delete holidays[selectedDate];
+                    saveCalendarSettings();
+                    renderCalendar(currentDisplayYear, currentDisplayMonth);
+                }
             });
 
             document.getElementById('mark-weekend').addEventListener('click', function() {

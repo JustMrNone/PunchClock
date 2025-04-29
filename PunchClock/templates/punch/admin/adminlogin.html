@@ -35,15 +35,14 @@
     <div class="login-card bg-white rounded-xl shadow-md p-8 max-w-md w-full">
         <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">Manager Login</h1>
         <p class="text-gray-600 mb-6 text-center">Sign in to access the manager dashboard</p>
-        <form method="post" action="{% url 'PunchClock:adminlogin' %}">
-            {% csrf_token %}
+        <form>
             <div class="mb-4">
                 <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
-                <input type="email" id="email" name="email" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your email">
+                <input type="email" id="email" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your email">
             </div>
             <div class="mb-4">
                 <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-                <input type="password" id="password" name="password" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your password">
+                <input type="password" id="password" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your password">
             </div>
             <div class="flex items-center justify-between mb-4">
                 <label class="flex items-center">
@@ -54,9 +53,6 @@
             </div>
             <button type="submit" class="login-btn w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">Login</button>
         </form>
-        {% if error %}
-        <p class="text-sm text-red-600 mt-4 text-center">{{ error }}</p>
-        {% endif %}
         <p class="text-sm text-gray-600 mt-6 text-center">
             Not a manager? <a href="{% url 'PunchClock:loginpunch' %}" class="text-indigo-600 hover:underline">Login as Employee</a>
         </p>
