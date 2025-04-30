@@ -7,8 +7,10 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.utils import timezone
 import json
-from .models import CalendarSettings, PersonalNote, CompanySettings
+from datetime import datetime, time, timedelta
+from .models import CalendarSettings, PersonalNote, CompanySettings, TimeEntry, Employee
 # Create your views here.
 
 class Admin(LoginRequiredMixin, UserPassesTestMixin, View):
@@ -27,7 +29,36 @@ class Admin(LoginRequiredMixin, UserPassesTestMixin, View):
 
 class PunchCard(LoginRequiredMixin, View):
     def get(self, request):
-        return render(request, 'punch/punchcard/punchcard.html')
+        context = {}
+        if request.user.is_staff:
+            # For admin users, use their user info directly
+            context['display_name'] = request.user.get_full_name() or request.user.username
+            context['initials'] = ''.join(x[0].upper() for x in request.user.get_full_name().split()) if request.user.get_full_name() else request.user.username[:2].upper()
+        else:
+            try:
+                # For regular employees
+                employee = Employee.objects.get(user=request.user)
+            except Employee.DoesNotExist:
+                # Get the first admin user in the system to assign as the employee's admin
+                admin_user = User.objects.filter(is_staff=True).first()
+                if not admin_user:
+                    # If no admin exists, make this user their own admin temporarily
+                    admin_user = request.user
+                    request.user.is_staff = True
+                    request.user.save()
+                
+                # Create employee record with required admin field
+                employee = Employee.objects.create(
+                    user=request.user,
+                    admin=admin_user,
+                    department='',
+                    hire_date=timezone.now().date()
+                )
+            
+            context['display_name'] = employee.full_name
+            context['initials'] = ''.join(x[0].upper() for x in employee.full_name.split()) if employee.full_name else employee.user.username[:2].upper()
+            
+        return render(request, 'punch/punchcard/punchcard.html', context)
     
 class Welcome(View):
     def get(self, request):
@@ -307,4 +338,350 @@ class GetEmployeeDetailsView(View):
                 'success': False,
                 'message': str(e)
             }, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class PunchTimeView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            start_time = datetime.strptime(data.get('start_time'), '%H:%M').time()
+            end_time = datetime.strptime(data.get('end_time'), '%H:%M').time() if data.get('end_time') else None
+            
+            # Get employee record for the current user
+            employee = Employee.objects.get(user=request.user)
+            
+            # Create time entry
+            entry = TimeEntry.objects.create(
+                employee=employee,
+                date=timezone.now().date(),
+                start_time=start_time,
+                end_time=end_time,
+                status='pending'
+            )
+            
+            # Make sure total_hours is calculated
+            entry.save()
+            
+            return JsonResponse({
+                'success': True,
+                'entry': {
+                    'id': entry.id,
+                    'date': entry.date.strftime('%Y-%m-%d'),
+                    'start_time': entry.start_time.strftime('%I:%M %p'),  # Changed to 12-hour format
+                    'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
+                    'total_hours': float(entry.total_hours),
+                    'status': entry.status,
+                    'created_at': entry.created_at.strftime('%I:%M %p')
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class GetTimeStatisticsView(View):
+    def get(self, request, employee_id=None):
+        try:
+            if employee_id:
+                # Admin viewing employee stats
+                employee = Employee.objects.get(id=employee_id)
+                if employee.admin != request.user:
+                    return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
+            else:
+                # Employee viewing their own stats
+                employee = Employee.objects.get(user=request.user)
+            
+            weekly_hours = TimeEntry.get_weekly_hours(employee)
+            daily_average = TimeEntry.get_daily_average(employee)
+            
+            return JsonResponse({
+                'success': True,
+                'statistics': {
+                    'weekly_hours': weekly_hours,
+                    'daily_average': daily_average
+                }
+            })
+        except Employee.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Employee not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class GetRecentActivitiesView(View):
+    def get(self, request):
+        try:
+            employee = Employee.objects.get(user=request.user)
+            # Get entries from the last 4 days only (instead of 7)
+            four_days_ago = timezone.now().date() - timedelta(days=4)
+            recent_entries = TimeEntry.objects.filter(
+                employee=employee,
+                date__gte=four_days_ago
+            ).order_by('-created_at')
+            
+            entries_data = []
+            for entry in recent_entries:
+                entries_data.append({
+                    'id': entry.id,
+                    'date': entry.date.strftime('%Y-%m-%d'),
+                    'start_time': entry.start_time.strftime('%I:%M %p'),
+                    'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
+                    'total_hours': float(entry.total_hours),
+                    'status': entry.status,
+                    'created_at': entry.created_at.strftime('%I:%M %p')
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'entries': entries_data
+            })
+        except Employee.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Employee not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class GetTodayTimeEntriesView(View):
+    def get(self, request):
+        try:
+            # Get today's date
+            today = timezone.now().date()
+            
+            if request.user.is_staff:
+                # For admin users, get all time entries for today from all their managed employees
+                employees = Employee.objects.filter(admin=request.user)
+                time_entries = TimeEntry.objects.filter(
+                    employee__in=employees,
+                    date=today
+                ).select_related('employee')
+            else:
+                # Regular employees can only see their own time entries
+                employee = Employee.objects.get(user=request.user)
+                time_entries = TimeEntry.objects.filter(
+                    employee=employee,
+                    date=today
+                )
+            
+            entries_data = []
+            for entry in time_entries:
+                entries_data.append({
+                    'id': entry.id,
+                    'employee_id': entry.employee.id,
+                    'employee_name': entry.employee.full_name,
+                    'department': entry.employee.department,
+                    'date': entry.date.strftime('%Y-%m-%d'),
+                    'start_time': entry.start_time.strftime('%I:%M %p'),
+                    'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
+                    'total_hours': float(entry.total_hours),
+                    'status': entry.status,
+                    'created_at': entry.created_at.strftime('%I:%M %p')
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'entries': entries_data
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class UpdateTimeEntryStatusView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            entry_id = data.get('entry_id')
+            status = data.get('status')
+            
+            if not entry_id or not status:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Entry ID and status are required'
+                }, status=400)
+            
+            if status not in ['pending', 'approved', 'rejected']:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid status. Must be one of: pending, approved, rejected'
+                }, status=400)
+            
+            # Get the time entry
+            time_entry = TimeEntry.objects.get(id=entry_id)
+            
+            # Check if the user has permission to update this entry
+            if request.user.is_staff:
+                # Admin users can update entries for their employees
+                if time_entry.employee.admin != request.user:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'You do not have permission to update this entry'
+                    }, status=403)
+            else:
+                # Regular employees can only update their own entries
+                employee = Employee.objects.get(user=request.user)
+                if time_entry.employee != employee:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'You do not have permission to update this entry'
+                    }, status=403)
+            
+            # Update the status
+            time_entry.status = status
+            time_entry.save()
+            
+            return JsonResponse({
+                'success': True,
+                'entry': {
+                    'id': time_entry.id,
+                    'status': time_entry.status
+                }
+            })
+        except TimeEntry.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Time entry not found'
+            }, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class ApproveAllTimeEntriesView(View):
+    def post(self, request):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can approve all time entries'
+                }, status=403)
+            
+            # Get today's date
+            today = timezone.now().date()
+            
+            # Get all pending time entries for today from employees managed by this admin
+            pending_entries = TimeEntry.objects.filter(
+                employee__admin=request.user,
+                date=today,
+                status='pending'
+            )
+            
+            # Count entries before updating
+            count = pending_entries.count()
+            
+            # Update all entries to 'approved'
+            pending_entries.update(status='approved')
+            
+            return JsonResponse({
+                'success': True,
+                'count': count,
+                'message': f'Successfully approved {count} time entries'
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class ClearTimeEntriesView(View):
+    def post(self, request):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can clear time entries'
+                }, status=403)
+            
+            data = json.loads(request.body)
+            employee_id = data.get('employee_id')
+            today = timezone.now().date()
+            
+            if employee_id:
+                employee = Employee.objects.get(id=employee_id)
+                if employee.admin != request.user:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'You do not have permission to clear entries for this employee'
+                    }, status=403)
+                entries_to_clear = TimeEntry.objects.filter(employee=employee, date=today)
+            else:
+                entries_to_clear = TimeEntry.objects.filter(employee__admin=request.user, date=today)
+            
+            # Store entries in session for undo functionality
+            entries_data = []
+            for entry in entries_to_clear:
+                entries_data.append({
+                    'employee_id': entry.employee_id,
+                    'date': entry.date.strftime('%Y-%m-%d'),
+                    'start_time': entry.start_time.strftime('%H:%M'),
+                    'end_time': entry.end_time.strftime('%H:%M') if entry.end_time else None,
+                    'status': entry.status
+                })
+            
+            # Store in session instead of cache for Docker compatibility
+            request.session['cleared_entries'] = entries_data
+            
+            count = entries_to_clear.count()
+            entries_to_clear.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'count': count,
+                'message': f'Successfully cleared {count} time entries'
+            })
+        except Employee.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Employee not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class UndoClearTimeEntriesView(View):
+    def post(self, request):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can undo clear operations'
+                }, status=403)
+            
+            # Get the entries from session
+            entries_data = request.session.get('cleared_entries')
+            
+            if not entries_data:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No recently cleared entries found to restore'
+                }, status=404)
+            
+            # Restore the entries
+            restored_count = 0
+            for entry_data in entries_data:
+                try:
+                    employee = Employee.objects.get(id=entry_data['employee_id'])
+                    
+                    # Skip if employee is not managed by this admin
+                    if employee.admin != request.user:
+                        continue
+                    
+                    date = datetime.strptime(entry_data['date'], '%Y-%m-%d').date()
+                    start_time = datetime.strptime(entry_data['start_time'], '%H:%M').time()
+                    end_time = datetime.strptime(entry_data['end_time'], '%H:%M').time() if entry_data['end_time'] else None
+                    
+                    TimeEntry.objects.create(
+                        employee=employee,
+                        date=date,
+                        start_time=start_time,
+                        end_time=end_time,
+                        status=entry_data['status']
+                    )
+                    
+                    restored_count += 1
+                except Exception as inner_e:
+                    print(f"Error restoring entry: {inner_e}")
+                    continue
+            
+            # Clear the session data after restoration
+            if 'cleared_entries' in request.session:
+                del request.session['cleared_entries']
+            
+            return JsonResponse({
+                'success': True,
+                'count': restored_count,
+                'message': f'Successfully restored {restored_count} time entries'
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
 

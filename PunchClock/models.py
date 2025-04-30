@@ -52,10 +52,9 @@ class TimeEntry(models.Model):
         
         entries = cls.objects.filter(
             employee=employee,
-            date__range=[week_start, week_end],
-            status='approved'
+            date__range=[week_start, week_end]
         )
-        return sum(entry.total_hours for entry in entries)
+        return sum(float(entry.total_hours) for entry in entries)
 
     @classmethod
     def get_daily_average(cls, employee, days=30):
@@ -64,15 +63,15 @@ class TimeEntry(models.Model):
         
         entries = cls.objects.filter(
             employee=employee,
-            date__range=[start_date, end_date],
-            status='approved'
+            date__range=[start_date, end_date]
         )
         
         if not entries:
             return 0
             
-        total_hours = sum(entry.total_hours for entry in entries)
+        total_hours = sum(float(entry.total_hours) for entry in entries)
         working_days = entries.values('date').distinct().count()
+        
         return round(total_hours / working_days, 2) if working_days > 0 else 0
 
 class PersonalNote(models.Model):

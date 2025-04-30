@@ -70,14 +70,14 @@
                     <i class="fas fa-calendar-alt mr-2"></i>Calendar
                 </a>
                 <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
-                    <span id="userInitial">JD</span>
+                    <span id="userInitial">{{ initials }}</span>
                 </div>
             </div>
         </header>
         
         <!-- Greeting -->
         <div class="mb-8">
-            <h2 id="greeting" class="text-2xl font-semibold text-gray-800">Hi, Shabnam</h2>
+            <h2 id="greeting" class="text-2xl font-semibold text-gray-800">Hi, {{ display_name }}</h2>
             <p class="text-gray-600">Ready to track your work hours today?</p>
         </div>
         
@@ -116,6 +116,29 @@
                 </div>
             </div>
             
+            <!-- Statistics Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="bg-indigo-50 rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">This Week</p>
+                            <p id="weeklyHours" class="text-2xl font-bold text-indigo-700">0.00 hours</p>
+                        </div>
+                        <i class="fas fa-calendar-week text-3xl text-indigo-400"></i>
+                    </div>
+                </div>
+                
+                <div class="bg-green-50 rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">Daily Average</p>
+                            <p id="dailyAverage" class="text-2xl font-bold text-green-600">0.00 hours</p>
+                        </div>
+                        <i class="fas fa-chart-line text-3xl text-green-400"></i>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Total Hours -->
             <div class="bg-indigo-50 rounded-lg p-4 mb-6">
                 <div class="flex justify-between items-center">
@@ -137,43 +160,8 @@
         <!-- Recent Activity -->
         <div class="bg-white rounded-xl p-6 time-card">
             <h3 class="text-xl font-semibold text-gray-800 mb-4">Recent Activity</h3>
-            <div class="space-y-4">
-                <div class="flex items-center justify-between p-3 border-b border-gray-100">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3">
-                            <i class="fas fa-check"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium">Time submitted</p>
-                            <p class="text-xs text-gray-500">Today, 5:30 PM</p>
-                        </div>
-                    </div>
-                    <span class="text-sm font-medium">8.5 hours</span>
-                </div>
-                <div class="flex items-center justify-between p-3 border-b border-gray-100">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
-                            <i class="fas fa-edit"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium">Time updated</p>
-                            <p class="text-xs text-gray-500">Yesterday, 6:15 PM</p>
-                        </div>
-                    </div>
-                    <span class="text-sm font-medium">7.75 hours</span>
-                </div>
-                <div class="flex items-center justify-between p-3">
-                    <div class="flex items-center">
-                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3">
-                            <i class="fas fa-check"></i>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium">Time submitted</p>
-                            <p class="text-xs text-gray-500">Monday, 5:45 PM</p>
-                        </div>
-                    </div>
-                    <span class="text-sm font-medium">8.25 hours</span>
-                </div>
+            <div id="recent-activities" class="space-y-4">
+                <!-- Activities will be loaded here dynamically -->
             </div>
         </div>
     </div>
@@ -185,36 +173,6 @@
     </div>
 
     <script>
-        // Sample user data (in a real app, this would come from authentication)
-        const user = {
-            name: "Shabnam",
-            initial: "SH"
-        };
-        
-        // Sample quotes
-        const quotes = [
-            {
-                text: "Success is not final, failure is not fatal: It is the courage to continue that counts.",
-                author: "Winston Churchill"
-            },
-            {
-                text: "The only way to do great work is to love what you do.",
-                author: "Steve Jobs"
-            },
-            {
-                text: "Your work is going to fill a large part of your life, and the only way to be truly satisfied is to do what you believe is great work.",
-                author: "Steve Jobs"
-            },
-            {
-                text: "Hard work beats talent when talent doesn't work hard.",
-                author: "Tim Notke"
-            },
-            {
-                text: "The secret of getting ahead is getting started.",
-                author: "Mark Twain"
-            }
-        ];
-        
         // DOM elements
         const greetingElement = document.getElementById('greeting');
         const userInitialElement = document.getElementById('userInitial');
@@ -226,30 +184,49 @@
         const endNowBtn = document.getElementById('endNowBtn');
         const totalHoursElement = document.getElementById('totalHours');
         const punchBtn = document.getElementById('punchBtn');
+        const weeklyHoursElement = document.getElementById('weeklyHours');
+        const dailyAverageElement = document.getElementById('dailyAverage');
         
-        // Initialize
-        function init() {
-            // Set user info
-            greetingElement.textContent = `Hi, ${user.name}!`;
-            userInitialElement.textContent = user.initial;
-            
-            // Set random quote
-            setRandomQuote();
-            
-            // Set current time as default
-            updateCurrentTimes();
-            
-            // Calculate initial total hours
-            calculateTotalHours();
-        }
-        
-        // Set random inspirational quote
+        // Sample quotes
+        const quotes = [
+            {
+                text: "Success is not final, failure is not fatal: It is the courage to continue that counts.",
+                author: "Winston Churchill"
+            },
+            {
+                text: "The way to get started is to quit talking and begin doing.",
+                author: "Walt Disney"
+            },
+            {
+                text: "The future depends on what you do today.",
+                author: "Mahatma Gandhi"
+            },
+            {
+                text: "Don't watch the clock; do what it does. Keep going.",
+                author: "Sam Levenson"
+            }
+        ];
+
+        // Set random quote
         function setRandomQuote() {
-            const randomIndex = Math.floor(Math.random() * quotes.length);
-            quoteElement.textContent = quotes[randomIndex].text;
-            authorElement.textContent = `- ${quotes[randomIndex].author}`;
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+            quoteElement.textContent = randomQuote.text;
+            authorElement.textContent = `- ${randomQuote.author}`;
         }
-        
+
+        // Load time statistics
+        function loadTimeStatistics() {
+            fetch('/api/time/stats/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        weeklyHoursElement.textContent = `${data.statistics.weekly_hours.toFixed(2)} hours`;
+                        dailyAverageElement.textContent = `${data.statistics.daily_average.toFixed(2)} hours`;
+                    }
+                })
+                .catch(error => console.error('Error loading statistics:', error));
+        }
+
         // Update current times
         function updateCurrentTimes() {
             const now = new Date();
@@ -268,7 +245,22 @@
             
             calculateTotalHours();
         }
-        
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg ${
+                type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            } text-white transition-all duration-300 transform translate-y-0`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.style.transform = 'translateY(150%)';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
         // Calculate total hours between start and end time
         function calculateTotalHours() {
             const startTime = startTimeInput.value;
@@ -280,23 +272,169 @@
             const [endHours, endMinutes] = endTime.split(':').map(Number);
             
             let totalMinutes = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
+            if (totalMinutes < 0) totalMinutes += 24 * 60;
             
-            // Handle overnight shifts (end time is next day)
-            if (totalMinutes < 0) {
-                totalMinutes += 24 * 60;
-            }
-            
-            const hours = Math.floor(totalMinutes / 60);
-            const minutes = totalMinutes % 60;
-            const totalHours = hours + (minutes / 60);
-            
-            totalHoursElement.textContent = `${totalHours.toFixed(2)} hours`;
+            const hours = totalMinutes / 60;
+            totalHoursElement.textContent = `${hours.toFixed(2)} hours`;
+            return hours;
         }
+
+        // Load recent activities
+        function loadRecentActivities(highlightNewest = false) {
+            fetch('/api/time/recent/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const activitiesContainer = document.getElementById('recent-activities');
+                        activitiesContainer.innerHTML = ''; // Clear existing activities
+                        
+                        if (data.entries.length === 0) {
+                            activitiesContainer.innerHTML = `
+                                <div class="p-4 text-center text-gray-500">
+                                    No recent time entries found.
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        // Today's date to filter entries
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        // Filter entries for today only
+                        const todayEntries = data.entries.filter(entry => {
+                            const entryDate = new Date(entry.date);
+                            entryDate.setHours(0, 0, 0, 0);
+                            return entryDate.getTime() === today.getTime();
+                        });
+                        
+                        if (todayEntries.length === 0) {
+                            activitiesContainer.innerHTML = `
+                                <div class="p-4 text-center text-gray-500">
+                                    No time entries for today.
+                                </div>
+                            `;
+                            return;
+                        }
+                        
+                        // Sort by creation time (newest first)
+                        todayEntries.sort((a, b) => {
+                            return new Date(b.date + ' ' + b.created_at) - new Date(a.date + ' ' + a.created_at);
+                        });
+                        
+                        todayEntries.forEach((entry, index) => {
+                            const activityEl = document.createElement('div');
+                            activityEl.className = `flex items-center justify-between p-3 border-b border-gray-100 ${index === 0 && highlightNewest ? 'bg-indigo-50' : ''}`;
+                            
+                            const statusColors = {
+                                'pending': 'yellow',
+                                'approved': 'green',
+                                'rejected': 'red'
+                            };
+                            
+                            const statusColor = statusColors[entry.status] || 'yellow';
+                            const date = new Date(entry.date);
+                            const today = new Date();
+                            const isToday = date.toDateString() === today.toDateString();
+                            const dateString = isToday ? 'Today' : entry.date;
+                            
+                            activityEl.innerHTML = `
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 rounded-full bg-${statusColor}-100 flex items-center justify-center text-${statusColor}-600 mr-3">
+                                        <i class="fas ${entry.status === 'approved' ? 'fa-check' : entry.status === 'rejected' ? 'fa-times' : 'fa-clock'}"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium">Time ${entry.end_time ? 'submitted' : 'started'}</p>
+                                        <p class="text-xs text-gray-500">${dateString}, ${entry.created_at}</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${statusColor}-100 text-${statusColor}-800 mr-3">
+                                        ${entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                                    </span>
+                                    <span class="text-sm font-medium">${entry.total_hours.toFixed(2)} hours</span>
+                                </div>
+                            `;
+                            
+                            if (index === 0 && highlightNewest) {
+                                activityEl.style.transition = 'background-color 0.5s ease';
+                                setTimeout(() => {
+                                    activityEl.style.backgroundColor = 'transparent';
+                                }, 2000);
+                            }
+                            
+                            activitiesContainer.appendChild(activityEl);
+                        });
+                    }
+                })
+                .catch(error => console.error('Error loading recent activities:', error));
+        }
+
+        // Punch button click handler
+        punchBtn.addEventListener('click', () => {
+            // Disable button and show processing state
+            punchBtn.disabled = true;
+            punchBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+            punchBtn.classList.add('bg-indigo-800');
+            punchBtn.classList.remove('hover:bg-indigo-700');
+            
+            // Submit the time entry
+            fetch('/api/time/punch/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    start_time: startTimeInput.value,
+                    end_time: endTimeInput.value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success state briefly
+                    punchBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Time Recorded!';
+                    showNotification('Time entry saved successfully!');
+                    
+                    // Reset time inputs to current time
+                    const now = new Date();
+                    const hours = String(now.getHours()).padStart(2, '0');
+                    const minutes = String(now.getMinutes()).padStart(2, '0');
+                    startTimeInput.value = `${hours}:${minutes}`;
+                    endTimeInput.value = `${hours}:${minutes}`;
+                    
+                    // Update displayed stats
+                    calculateTotalHours();
+                    loadTimeStatistics();
+                    loadRecentActivities(true);
+                } else {
+                    // Show error state briefly
+                    punchBtn.innerHTML = '<i class="fas fa-times-circle mr-2"></i> Failed!';
+                    showNotification(data.message || 'Failed to save time entry', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                punchBtn.innerHTML = '<i class="fas fa-times-circle mr-2"></i> Failed!';
+                showNotification('Failed to connect to server', 'error');
+            })
+            .finally(() => {
+                // Reset button state after a delay
+                setTimeout(() => {
+                    punchBtn.innerHTML = '<i class="fas fa-fingerprint text-xl mr-3"></i> PUNCH TIME';
+                    punchBtn.classList.remove('bg-indigo-800');
+                    punchBtn.classList.add('hover:bg-indigo-700');
+                    punchBtn.disabled = false;
+                }, 2000);
+            });
+        });
         
-        // Event listeners
+        // Event listeners for time inputs
         startTimeInput.addEventListener('change', calculateTotalHours);
         endTimeInput.addEventListener('change', calculateTotalHours);
         
+        // Now buttons
         startNowBtn.addEventListener('click', () => {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
@@ -304,7 +442,7 @@
             startTimeInput.value = `${hours}:${minutes}`;
             calculateTotalHours();
         });
-        
+
         endNowBtn.addEventListener('click', () => {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
@@ -312,89 +450,34 @@
             endTimeInput.value = `${hours}:${minutes}`;
             calculateTotalHours();
         });
-        
-        punchBtn.addEventListener('click', () => {
-            // Animation effect
-            punchBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
-            punchBtn.classList.add('bg-indigo-800');
-            punchBtn.classList.remove('hover:bg-indigo-700');
-            
-            // Simulate API call
-            setTimeout(() => {
-                punchBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Time Recorded!';
-                
-                // Reset button after 2 seconds
-                setTimeout(() => {
-                    punchBtn.innerHTML = '<i class="fas fa-fingerprint text-xl mr-3"></i> PUNCH TIME';
-                    punchBtn.classList.remove('bg-indigo-800');
-                    punchBtn.classList.add('hover:bg-indigo-700');
-                    
-                    // Show success notification
-                    showNotification('Time successfully recorded!');
-                    
-                    // Add to recent activity
-                    addRecentActivity();
-                    
-                    // Change quote for variety
-                    setRandomQuote();
-                }, 2000);
-            }, 1000);
-        });
-        
-        // Show notification
-        function showNotification(message) {
-            const notification = document.createElement('div');
-            notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center animate-fade-in';
-            notification.innerHTML = `
-                <i class="fas fa-check-circle mr-2"></i>
-                <span>${message}</span>
-            `;
-            
-            document.body.appendChild(notification);
-            
-            setTimeout(() => {
-                notification.classList.add('animate-fade-out');
-                setTimeout(() => {
-                    notification.remove();
-                }, 500);
-            }, 3000);
+
+        // Initialize everything
+        function init() {
+            setRandomQuote();
+            updateCurrentTimes();
+            loadTimeStatistics();
+            calculateTotalHours();
+            loadRecentActivities();
         }
         
-        // Add recent activity
-        function addRecentActivity() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const timeString = `${hours}:${minutes}`;
-            
-            const [startHours, startMinutes] = startTimeInput.value.split(':').map(Number);
-            const [endHours, endMinutes] = endTimeInput.value.split(':').map(Number);
-            
-            let totalMinutes = (endHours * 60 + endMinutes) - (startHours * 60 + startMinutes);
-            if (totalMinutes < 0) totalMinutes += 24 * 60;
-            const totalHours = (totalMinutes / 60).toFixed(2);
-            
-            const activityList = document.querySelector('.space-y-4');
-            const newActivity = document.createElement('div');
-            newActivity.className = 'flex items-center justify-between p-3 border-b border-gray-100';
-            newActivity.innerHTML = `
-                <div class="flex items-center">
-                    <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3">
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm font-medium">Time submitted</p>
-                        <p class="text-xs text-gray-500">Today, ${timeString}</p>
-                    </div>
-                </div>
-                <span class="text-sm font-medium">${totalHours} hours</span>
-            `;
-            
-            activityList.insertBefore(newActivity, activityList.firstChild);
-        }
-        
-        // Initialize the app
+        // Run initialization
         init();
+        
+        // Function to get CSRF cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
         
         // Add animation styles dynamically
         const style = document.createElement('style');

@@ -205,7 +205,7 @@
                 // Create calendar days
                 for (let day = 1; day <= daysInMonth; day++) {
                     const dayCell = document.createElement('div');
-                    dayCell.classList.add('h-20', 'p-1', 'text-right', 'calendar-day', 'cursor-pointer', 'border', 'border-gray-200', 'relative');
+                    dayCell.classList.add('h-20', 'p-1', 'text-right', 'calendar-day', 'cursor-pointer', 'border', 'border-gray-200', 'relative', 'rounded-lg', 'transition-all', 'duration-200');
 
                     const dateString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     const date = new Date(year, month, day);
@@ -217,22 +217,28 @@
 
                     // Add day of week label
                     const dayLabel = document.createElement('div');
-                    dayLabel.classList.add('text-xs', 'text-gray-500', 'absolute', 'top-1', 'left-1');
+                    dayLabel.classList.add('text-xs', 'text-gray-500', 'absolute', 'top-1', 'left-2');
                     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                     dayLabel.textContent = days[dayOfWeek];
                     dayCell.appendChild(dayLabel);
 
                     // Add click handler for date selection
                     dayCell.addEventListener('click', function() {
-                        document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
-                        this.classList.add('selected');
+                        document.querySelectorAll('.calendar-day').forEach(d => {
+                            d.classList.remove('selected');
+                            d.classList.remove('bg-indigo-50');
+                            d.classList.remove('ring-2');
+                            d.classList.remove('ring-indigo-600');
+                            d.classList.remove('ring-offset-2');
+                        });
+                        this.classList.add('selected', 'bg-indigo-50', 'ring-2', 'ring-indigo-600', 'ring-offset-2');
                         selectedDate = dateString;
                         updateDateDisplay(new Date(dateString));
                     });
 
                     // Highlight today's date
                     if (date.getTime() === today.getTime()) {
-                        dayCell.classList.add('ring-2', 'ring-indigo-600', 'ring-offset-2');
+                        dayCell.classList.add('ring-2', 'ring-indigo-600', 'ring-offset-2', 'bg-indigo-50');
                         dayCell.classList.add('selected');
                         selectedDate = dateString;
                         updateDateDisplay(today);
@@ -240,17 +246,17 @@
 
                     // Apply weekend styling if this day is marked as a weekend day
                     if (weekendDays.includes(dayOfWeek)) {
-                        dayCell.classList.add('bg-red-100');
+                        dayCell.classList.add('bg-red-50');
                     }
 
                     // Apply holiday styling
                     if (holidays[dateString]) {
-                        dayCell.classList.add('bg-red-100');
+                        dayCell.classList.add('bg-red-50');
                     }
 
                     // Create day number container
                     const dayContent = document.createElement('div');
-                    dayContent.classList.add('text-sm', 'font-medium', 'mt-4');
+                    dayContent.classList.add('text-sm', 'font-medium', 'mt-4', 'mr-2');
                     dayContent.textContent = day;
                     dayCell.appendChild(dayContent);
 
