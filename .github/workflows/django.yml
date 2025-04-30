@@ -41,7 +41,7 @@ jobs:
         virtualenvs-in-project: true
     
     - name: Install Dependencies
-      run: poetry install --no-interaction --no-ansi --no-root
+      run: poetry install --no-interaction --no-ansi
     
     - name: Run Tests
       env:
@@ -54,8 +54,3 @@ jobs:
       run: |
         poetry add flake8
         poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-
-# How to Use This Workflow:
-# 1. This workflow will automatically run tests when you push to main or create a pull request
-# 2. Tests will be run in a PostgreSQL environment that matches your project configuration
-# 3. Basic linting is also performed to catch common Python errors
