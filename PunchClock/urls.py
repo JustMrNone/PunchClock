@@ -17,4 +17,8 @@ urlpatterns = [
     path('api/personal-notes/get/', views.GetPersonalNotesView.as_view(), name='get_personal_notes'),
     path('employee/calendar/', views.EmployeeCalendarView.as_view(), name='employee_calendar'),
     path('calendar/', views.EmployeeCalendarView.as_view(), name='calendar'),  # Added new URL pattern
+    
+    # Add new API endpoints for employees
+    path('api/employees/get/', views.GetEmployeesView.as_view(), name='get_employees'),
+    path('api/employees/<int:employee_id>/', views.GetEmployeeDetailsView.as_view(), name='get_employee_details'),
 ]

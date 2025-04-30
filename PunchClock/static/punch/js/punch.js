@@ -44,17 +44,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize
     function init() {
         // Set user info
-        greetingElement.textContent = `Hi, ${user.name}!`;
-        userInitialElement.textContent = user.initial;
+        if (greetingElement) greetingElement.textContent = `Hi, ${user.name}!`;
+        if (userInitialElement) userInitialElement.textContent = user.initial;
         
         // Set random quote
-        setRandomQuote();
+        if (quoteElement && authorElement) setRandomQuote();
         
         // Set current time as default
-        updateCurrentTimes();
+        if (startTimeInput || endTimeInput) updateCurrentTimes();
         
         // Calculate initial total hours
-        calculateTotalHours();
+        if (totalHoursElement) calculateTotalHours();
     }
     
     // Set random inspirational quote
@@ -108,52 +108,63 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Event listeners
-    startTimeInput.addEventListener('change', calculateTotalHours);
-    endTimeInput.addEventListener('change', calculateTotalHours);
+    if (startTimeInput) {
+        startTimeInput.addEventListener('change', calculateTotalHours);
+    }
     
-    startNowBtn.addEventListener('click', () => {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        startTimeInput.value = `${hours}:${minutes}`;
-        calculateTotalHours();
-    });
+    if (endTimeInput) {
+        endTimeInput.addEventListener('change', calculateTotalHours);
+    }
     
-    endNowBtn.addEventListener('click', () => {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        endTimeInput.value = `${hours}:${minutes}`;
-        calculateTotalHours();
-    });
+    if (startNowBtn) {
+        startNowBtn.addEventListener('click', () => {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            startTimeInput.value = `${hours}:${minutes}`;
+            calculateTotalHours();
+        });
+    }
     
-    punchBtn.addEventListener('click', () => {
-        // Animation effect
-        punchBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
-        punchBtn.classList.add('bg-indigo-800');
-        punchBtn.classList.remove('hover:bg-indigo-700');
-        
-        // Simulate API call
-        setTimeout(() => {
-            punchBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Time Recorded!';
+    if (endNowBtn) {
+        endNowBtn.addEventListener('click', () => {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            endTimeInput.value = `${hours}:${minutes}`;
+            calculateTotalHours();
+        });
+    }
+    
+    if (punchBtn) {
+        punchBtn.addEventListener('click', () => {
+            // Animation effect
+            punchBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+            punchBtn.classList.add('bg-indigo-800');
+            punchBtn.classList.remove('hover:bg-indigo-700');
             
-            // Reset button after 2 seconds
+            // Simulate API call
             setTimeout(() => {
-                punchBtn.innerHTML = '<i class="fas fa-fingerprint text-xl mr-3"></i> PUNCH TIME';
-                punchBtn.classList.remove('bg-indigo-800');
-                punchBtn.classList.add('hover:bg-indigo-700');
+                punchBtn.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Time Recorded!';
                 
-                // Show success notification
-                showNotification('Time successfully recorded!');
-                
-                // Add to recent activity
-                addRecentActivity();
-                
-                // Change quote for variety
-                setRandomQuote();
-            }, 2000);
-        }, 1000);
-    });
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    punchBtn.innerHTML = '<i class="fas fa-fingerprint text-xl mr-3"></i> PUNCH TIME';
+                    punchBtn.classList.remove('bg-indigo-800');
+                    punchBtn.classList.add('hover:bg-indigo-700');
+                    
+                    // Show success notification
+                    showNotification('Time successfully recorded!');
+                    
+                    // Add to recent activity
+                    addRecentActivity();
+                    
+                    // Change quote for variety
+                    setRandomQuote();
+                }, 2000);
+            }, 1000);
+        });
+    }
     
     // Show notification
     function showNotification(message) {

@@ -5,9 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WorkTime Tracker | Admin Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{% static 'punch/css/punch.css' %}">
+    <link rel="stylesheet" href="{% static 'punch/css/mypunch.css' %}">
 
 </head>
 <body class="min-h-screen">
@@ -40,9 +40,7 @@
         </div>
     </div>
 
-    <script src={% static 'punch/js/punch.js' %}>
-
-    </script>
+    <script src={% static 'punch/js/punch.js' %}></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Tab switching functionality
@@ -61,7 +59,23 @@
                     // Add active class to clicked tab and corresponding content
                     this.classList.add('active');
                     const tabId = this.getAttribute('data-tab');
-                    document.getElementById(tabId).classList.add('active');
+                    const tabContent = document.getElementById(tabId);
+                    if (tabContent) {
+                        tabContent.classList.add('active');
+                        
+                        // If employee-view tab, make sure employee dropdown is visible
+                        if (tabId === 'employee-view') {
+                            const employeeSelect = document.getElementById('employee-select');
+                            if (employeeSelect) {
+                                employeeSelect.style.display = '';
+                                employeeSelect.parentElement.style.display = '';
+                                
+                                // Trigger a custom event to load employees
+                                const event = new CustomEvent('tabActivated');
+                                tabContent.dispatchEvent(event);
+                            }
+                        }
+                    }
 
                     // Save the active tab to localStorage
                     localStorage.setItem('activeTab', tabId);
@@ -76,6 +90,7 @@
                     savedTabElement.click();
                 }
             } else {
+                // If no saved tab, activate the first tab
                 const firstTab = document.querySelector('[data-tab]');
                 if (firstTab) {
                     firstTab.click();

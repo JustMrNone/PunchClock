@@ -6,17 +6,16 @@
             <p class="text-gray-600">Detailed view of employee working hours</p>
         </div>
         <div class="flex items-center space-x-4">
-            <div class="relative">
-                <select id="employee-select" class="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none bg-white">
-                    <option value="1">John Doe</option>
-                    <option value="2">Alice Smith</option>
-                    <option value="3">Michael Johnson</option>
-                    <option value="4">Sarah Williams</option>
-                    <option value="5">Robert Brown</option>
+            <!-- NEW DROPDOWN with unique styling -->
+            <div class="relative" id="new-dropdown-container" style="min-width: 200px;">
+                <select id="new-employee-select" style="width: 100%; height: 40px; padding: 8px 30px 8px 40px; background-color: #f3f4ff; border: 2px solid #6366f1; border-radius: 8px; font-weight: 500; color: #333; cursor: pointer; appearance: none;">
+                    <option value="">Choose Employee</option>
+                    <!-- Options will be populated by JS -->
                 </select>
-                <i class="fas fa-user absolute left-3 top-3 text-gray-400"></i>
-                <i class="fas fa-chevron-down absolute right-3 top-3 text-gray-400 pointer-events-none"></i>
+                <div style="position: absolute; top: 10px; left: 10px;">👤</div>
+                <div style="position: absolute; top: 10px; right: 10px;">▼</div>
             </div>
+
             <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
                 <i class="fas fa-calendar-alt text-gray-600"></i>
             </button>
@@ -27,10 +26,10 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white rounded-xl p-6 time-card">
             <div class="flex items-center">
-                <div class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-2xl mr-4">JD</div>
+                <div id="employee-initials" class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-2xl mr-4">--</div>
                 <div>
-                    <h3 class="text-xl font-semibold text-gray-800">John Doe</h3>
-                    <p class="text-gray-600">Engineering Department</p>
+                    <h3 id="employee-name" class="text-xl font-semibold text-gray-800">Select an employee</h3>
+                    <p id="dep">--</p>
                 </div>
             </div>
         </div>
@@ -127,4 +126,176 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Function to get initials from a name
+        function getInitials(name) {
+            if (!name) return "--";
+            return name.split(' ').map(n => n[0]).join('').toUpperCase();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Focus on getting the NEW dropdown working
+            loadEmployeesForNewDropdown();
+            
+            // Listen for tab activation
+            document.querySelectorAll('[data-tab="employee-view"]').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    setTimeout(loadEmployeesForNewDropdown, 100);
+                });
+            });
+            
+            // Custom event for admin.html to trigger
+            document.getElementById('employee-view').addEventListener('tabActivated', function() {
+                console.log('Tab activated event received');
+                loadEmployeesForNewDropdown();
+            });
+        });
+
+        // Function specifically for the new dropdown
+        function loadEmployeesForNewDropdown() {
+            console.log("Loading employees for dropdown");
+            var newDropdown = document.getElementById('new-employee-select');
+            
+            if (!newDropdown) {
+                console.error("Dropdown not found in DOM");
+                return;
+            }
+            
+            // Clear any animations or transitions
+            newDropdown.style.transition = 'none';
+            
+            // Make an API request
+            fetch('/api/employees/get/')
+                .then(function(response) {
+                    console.log("Dropdown API response status:", response.status);
+                    return response.json();
+                })
+                .then(function(data) {
+                    console.log("Dropdown received data:", data);
+                    
+                    if (data.success && data.employees && data.employees.length > 0) {
+                        // Reset dropdown
+                        newDropdown.innerHTML = '<option value="">Choose Employee</option>';
+                        
+                        // Add each employee
+                        data.employees.forEach(function(emp) {
+                            var opt = document.createElement('option');
+                            opt.value = emp.id;
+                            opt.textContent = emp.full_name;
+                            newDropdown.appendChild(opt);
+                            console.log("Dropdown added option:", opt.outerHTML);
+                        });
+                        
+                        // Flash the dropdown to draw attention
+                        newDropdown.style.backgroundColor = '#ffec99';
+                        setTimeout(function() {
+                            newDropdown.style.transition = 'background-color 1s';
+                            newDropdown.style.backgroundColor = '#f3f4ff';
+                        }, 500);
+                        
+                        // Add change event
+                        newDropdown.onchange = function() {
+                            if (this.value) {
+                                // Get the selected employee name directly from the dropdown option
+                                const selectedText = this.options[this.selectedIndex].text;
+                                
+                                // Update the employee name display immediately for better UX
+                                const nameElement = document.getElementById('employee-name');
+                                const deptElement = document.getElementById('employee-department');
+                                const initialsElement = document.getElementById('employee-initials');
+                                
+                                if (nameElement) {
+                                    nameElement.textContent = selectedText;
+                                    console.log("Updated employee name to:", selectedText);
+                                }
+                                
+                                // Show loading state for department
+                                if (deptElement) {
+                                    deptElement.textContent = "Loading...";
+                                }
+                                
+                                // Update initials immediately
+                                if (initialsElement) {
+                                    initialsElement.textContent = getInitials(selectedText);
+                                }
+                                
+                                // Then load full details
+                                loadEmployeeDetailsFromNewDropdown(this.value);
+                            } else {
+                                // Reset when "Choose Employee" is selected
+                                resetEmployeeDisplay();
+                            }
+                        };
+                        
+                        console.log("Dropdown setup complete. Current HTML:", newDropdown.outerHTML);
+                    } else {
+                        console.error("Dropdown: No employees found in API response");
+                    }
+                })
+                .catch(function(error) {
+                    console.error("Dropdown error:", error);
+                });
+        }
+
+        function loadEmployeeDetailsFromNewDropdown(employeeId) {
+            console.log("Loading details for employee ID:", employeeId);
+            
+            fetch('/api/employees/' + employeeId + '/')
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data.success && data.employee) {
+                        console.log("Employee details received:", data.employee);
+                        console.log("Department value:", data.employee.department);
+                        
+                        var emp = data.employee;
+                        // We already set the name for immediate feedback, but we'll set it again here
+                        // in case there's any formatting difference between dropdown and API response
+                        document.getElementById('employee-name').textContent = emp.full_name;
+                        
+                        // IMPORTANT: Force department display with exactly what we received
+                        const departmentElement = document.getElementById('employee-department');
+                        departmentElement.textContent = emp.department;
+                        console.log("Department element updated with:", emp.department);
+                        console.log("Department element now contains:", departmentElement.textContent);
+                        
+                        document.getElementById('employee-initials').textContent = getInitials(emp.full_name);
+                        
+                        // Update the page title to include employee name
+                        document.querySelector('#employee-view h3.text-xl').textContent = emp.full_name;
+                        document.querySelector('#dep').textContent = departmentElement.textContent;
+                        
+                        // Visual feedback of successful data load
+                        var initialsElement = document.getElementById('employee-initials');
+                        initialsElement.style.transition = 'background-color 0.5s';
+                        initialsElement.style.backgroundColor = '#c7f9cc';
+                        setTimeout(function() {
+                            initialsElement.style.backgroundColor = '';
+                        }, 1000);
+                    } else {
+                        console.error("Failed to load employee details");
+                    }
+                })
+                .catch(function(error) {
+                    console.error("Error loading employee details:", error);
+                });
+        }
+
+        function resetEmployeeDisplay() {
+            const nameElement = document.getElementById('employee-name');
+            const deptElement = document.getElementById('employee-department');
+            const initialsElement = document.getElementById('employee-initials');
+            const titleElement = document.querySelector('#employee-view h3.text-xl');
+
+            if (nameElement) nameElement.textContent = 'Select an employee';
+            if (deptElement) deptElement.textContent = '--';
+            if (initialsElement) initialsElement.textContent = '--';
+            if (titleElement) titleElement.textContent = 'Select an employee';
+        }
+
+        // Run immediately to populate the dropdown
+        setTimeout(loadEmployeesForNewDropdown, 500);
+    </script>
 </div>

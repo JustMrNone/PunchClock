@@ -1,14 +1,23 @@
 <div id="add-employee" class="tab-content">
     <header class="flex justify-between items-center mb-8">
-        <div>
+        <div class="flex items-center">
             <h1 class="text-2xl font-bold text-gray-800">Add Employee</h1>
-            <p class="text-gray-600">Fill out the form to add a new employee</p>
+
         </div>
     </header>
 
     <!-- Add Employee Form -->
     <div class="bg-white rounded-xl p-6 shadow-md">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Employee Details</h3>
+        
+        <!-- Toast aligned with form -->
+        <div id="toast" class="mb-4 px-4 py-2 rounded bg-red-100 text-red-800 border border-red-200 hidden">
+            <div class="flex justify-between items-center w-full">
+                <span id="toast-message" class="flex-1"></span>
+                <button onclick="hideToast()" class="ml-4 text-red-800 hover:text-red-900">&times;</button>
+            </div>
+        </div>
+
         <div class="flex items-center mb-4">
             <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
                 <i class="fas fa-user text-2xl"></i>
@@ -46,8 +55,12 @@
                 <label for="employee-department" class="block text-sm font-medium text-gray-700">Department</label>
                 <input type="text" id="employee-department" name="employee_department" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter department">
             </div>
+            <div class="mb-4">
+                <label for="employee-hire-date" class="block text-sm font-medium text-gray-700">Hire Date</label>
+                <input type="date" id="employee-hire-date" name="employee_hire_date" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
+            </div>
 
-            <div class="flex justify-end">
+            <div class="flex justify-end items-center">
                 <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Add Employee</button>
             </div>
         </form>
@@ -77,32 +90,36 @@
             </div>
         </form>
     </div>
-
     <script>
-        document.getElementById('add-employee-form').addEventListener('submit', async function(event) {
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        function hideToast() {
+            document.getElementById('toast').classList.add('hidden');
+        }
+
+        // Handle form submission
+        document.getElementById('add-employee-form').addEventListener('submit', function(event) {
             event.preventDefault();
-            const formData = new FormData(this);
-
-            try {
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    alert(result.success);
-                    this.reset();
-                } else {
-                    alert(result.error);
+            const form = this;
+            const formData = new FormData(form);
+            
+            fetch(form.action, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
                 }
-            } catch (error) {
-                alert('An error occurred. Please try again.');
-            }
+            })
+            .then(response => response.json())
+            .then(data => {
+                showToast(data.success ? data.message : (data.error || 'Failed to add employee'));
+                if (data.success) form.reset();
+            });
         });
     </script>
 </div>

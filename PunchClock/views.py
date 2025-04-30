@@ -91,10 +91,12 @@ class AddEmployeeView(View):
         password = request.POST.get('employee_password')
         role = request.POST.get('employee_role')
         department = request.POST.get('employee_department')
+        hire_date = request.POST.get('employee_hire_date')
 
-        if not all([full_name, email, password, role]):
+        if not all([full_name, email, password, role, hire_date]):
             return JsonResponse({
-                'error': 'All fields except profile picture are required.'
+                'success': False,
+                'error': 'All required fields must be filled out.'
             }, status=400)
 
         try:
@@ -111,15 +113,18 @@ class AddEmployeeView(View):
                 Employee.objects.create(
                     user=user,
                     admin=request.user,
-                    department=department or ""
+                    department=department or "",
+                    hire_date=hire_date
                 )
             
             return JsonResponse({
-                'success': 'User created successfully.'
+                'success': True,
+                'message': 'User created successfully.'
             }, status=200)
         except Exception as e:
             return JsonResponse({
-                'error': f'An unexpected error occurred while creating the user: {str(e)}'
+                'success': False,
+                'error': f'{str(e)}'
             }, status=500)
 
 @method_decorator(login_required, name='dispatch')
@@ -274,16 +279,22 @@ class GetEmployeeDetailsView(View):
         try:
             from .models import Employee
             # Get the specific employee managed by this admin
-            employee = Employee.objects.select_related('user').get(id=employee_id, admin=request.user)
+            employee = Employee.objects.select_related('user').get(id=employee_id)
+            
+            # Make sure we get the department, even if it's empty
+            department = employee.department if employee.department else '--'
+            
+            # Debug print to check what we're sending
+            print(f"Sending employee data - Name: {employee.full_name}, Department: {department}")
             
             return JsonResponse({
                 'success': True,
                 'employee': {
                     'id': employee.id,
                     'user_id': employee.user.id,
-                    'full_name': employee.full_name,  # Changed from 'name' to 'full_name'
+                    'full_name': employee.full_name,
                     'email': employee.user.email,
-                    'department': employee.department
+                    'department': department
                 }
             })
         except Employee.DoesNotExist:
