@@ -685,3 +685,104 @@ class UndoClearTimeEntriesView(View):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
+@method_decorator(login_required, name='dispatch')
+class GetEmployeeStatsView(View):
+    def get(self, request):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can view employee statistics'
+                }, status=403)
+            
+            # Get today's date
+            today = timezone.now().date()
+            
+            # Get all employees managed by this admin
+            total_employees = Employee.objects.filter(admin=request.user).count()
+            
+            # Debug: Count all employees in the system
+            all_employees_count = Employee.objects.all().count()
+            
+            # Get active employees (those who have submitted time entries today)
+            active_employees = Employee.objects.filter(
+                admin=request.user,
+                timeentry__date=today
+            ).distinct().count()
+            
+            # Debug: Count all active employees regardless of admin
+            all_active_count = Employee.objects.filter(
+                timeentry__date=today
+            ).distinct().count()
+            
+            # Debug: Print information about all employees in the system
+            all_employees = Employee.objects.all()
+            print(f"Current admin user: {request.user.username} (ID: {request.user.id})")
+            print(f"Total employees in system: {all_employees_count}")
+            print(f"Total employees for this admin: {total_employees}")
+            print(f"Active employees (any admin): {all_active_count}")
+            print(f"Active employees (this admin): {active_employees}")
+            
+            # Print info about each employee
+            for employee in all_employees:
+                print(f"Employee: {employee.full_name}, Admin: {employee.admin.username} (ID: {employee.admin.id})")
+            
+            # Get pending approval count
+            pending_approval_count = TimeEntry.objects.filter(
+                employee__admin=request.user,
+                date=today,
+                status='pending'
+            ).count()
+            
+            # Calculate average hours today
+            today_entries = TimeEntry.objects.filter(
+                employee__admin=request.user,
+                date=today
+            )
+            
+            if today_entries.exists():
+                total_hours = sum(entry.total_hours for entry in today_entries)
+                avg_hours = total_hours / today_entries.count()
+            else:
+                avg_hours = 0
+                
+            return JsonResponse({
+                'success': True,
+                'stats': {
+                    'total_employees': total_employees,
+                    'active_employees': active_employees,
+                    'pending_approval': pending_approval_count,
+                    'avg_hours': round(avg_hours, 1)
+                }
+            })
+        except Exception as e:
+            print(f"Error in GetEmployeeStatsView: {e}")
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class GetActiveEmployeesView(View):
+    def get(self, request):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can view active employee counts'
+                }, status=403)
+            
+            # Get timestamp from 24 hours ago
+            twenty_four_hours_ago = timezone.now() - timedelta(hours=24)
+            
+            # Get count of employees who have entries that were approved in the last 24 hours
+            active_employees = Employee.objects.filter(
+                admin=request.user,
+                time_entries__updated_at__gte=twenty_four_hours_ago,
+                time_entries__status='approved'
+            ).distinct().count()
+            
+            return JsonResponse({
+                'success': True,
+                'active_count': active_employees
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+

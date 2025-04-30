@@ -37,4 +37,10 @@ urlpatterns = [
     # Clear and undo operations
     path('api/time/clear/', views.ClearTimeEntriesView.as_view(), name='clear_time_entries'),
     path('api/time/undo-clear/', views.UndoClearTimeEntriesView.as_view(), name='undo_clear_time_entries'),
+    
+    # Employee stats endpoint
+    path('api/employees/stats/', views.GetEmployeeStatsView.as_view(), name='get_employee_stats'),
+    
+    # Active employees endpoint (those who sent approval in last 24 hours)
+    path('api/time/active-employees/', views.GetActiveEmployeesView.as_view(), name='get_active_employees'),
 ]

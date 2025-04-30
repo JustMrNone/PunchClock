@@ -9,7 +9,7 @@
             <!-- NEW DROPDOWN with unique styling -->
             <div class="relative" id="new-dropdown-container" style="min-width: 200px;">
                 <select id="new-employee-select" style="width: 100%; height: 40px; padding: 8px 30px 8px 40px; background-color: #f3f4ff; border: 2px solid #6366f1; border-radius: 8px; font-weight: 500; color: #333; cursor: pointer; appearance: none;">
-                    <option value="">Choose Employee</option>
+                    <option value="" id="placeholder-option">Loading...</option>
                     <!-- Options will be populated by JS -->
                 </select>
                 <div style="position: absolute; top: 10px; left: 10px;">👤</div>
@@ -134,7 +134,19 @@
             return name.split(' ').map(n => n[0]).join('').toUpperCase();
         }
 
+        // Storage key constants
+        const EMPLOYEE_STORAGE_KEY = "selectedEmployeeId";
+        let employeesLoadedAndSelected = false;
+
         document.addEventListener('DOMContentLoaded', function() {
+            // Immediately check for saved employee to update UI
+            const savedEmployeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+            if (savedEmployeeId) {
+                // Show that we're loading a saved selection
+                const nameElement = document.getElementById('employee-name');
+                if (nameElement) nameElement.textContent = 'Loading saved selection...';
+            }
+            
             // Focus on getting the NEW dropdown working
             loadEmployeesForNewDropdown();
             
@@ -154,6 +166,12 @@
 
         // Function specifically for the new dropdown
         function loadEmployeesForNewDropdown() {
+            // Don't reload if we've already loaded and selected the employee
+            if (employeesLoadedAndSelected) {
+                console.log("Employees already loaded and selected, skipping reload");
+                return;
+            }
+            
             console.log("Loading employees for dropdown");
             var newDropdown = document.getElementById('new-employee-select');
             
@@ -162,8 +180,20 @@
                 return;
             }
             
+            // Keep the placeholder showing "Loading..." during API fetch
+            // Don't change the dropdown content yet
+            
             // Clear any animations or transitions
             newDropdown.style.transition = 'none';
+            
+            // Get previously selected employee ID from localStorage
+            const savedEmployeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+            console.log("Found saved employee ID:", savedEmployeeId);
+            
+            // If we have a saved employee ID, preload the employee details first
+            if (savedEmployeeId) {
+                loadEmployeeDetailsFromNewDropdown(savedEmployeeId);
+            }
             
             // Make an API request
             fetch('/api/employees/get/')
@@ -175,17 +205,34 @@
                     console.log("Dropdown received data:", data);
                     
                     if (data.success && data.employees && data.employees.length > 0) {
-                        // Reset dropdown
-                        newDropdown.innerHTML = '<option value="">Choose Employee</option>';
+                        // Only now reset dropdown content
+                        let hasSelected = false;
+                        
+                        // First create the options without adding to the DOM
+                        let options = document.createDocumentFragment();
+                        
+                        // Add default option
+                        let defaultOption = document.createElement('option');
+                        defaultOption.value = "";
+                        defaultOption.textContent = "Choose Employee";
+                        options.appendChild(defaultOption);
                         
                         // Add each employee
                         data.employees.forEach(function(emp) {
                             var opt = document.createElement('option');
                             opt.value = emp.id;
                             opt.textContent = emp.full_name;
-                            newDropdown.appendChild(opt);
-                            console.log("Dropdown added option:", opt.outerHTML);
+                            // If this is the saved employee, mark it as selected
+                            if (savedEmployeeId && emp.id == savedEmployeeId) {
+                                opt.selected = true;
+                                hasSelected = true;
+                            }
+                            options.appendChild(opt);
                         });
+                        
+                        // Now replace all options at once
+                        newDropdown.innerHTML = '';
+                        newDropdown.appendChild(options);
                         
                         // Flash the dropdown to draw attention
                         newDropdown.style.backgroundColor = '#ffec99';
@@ -197,6 +244,10 @@
                         // Add change event
                         newDropdown.onchange = function() {
                             if (this.value) {
+                                // Save the selected employee ID to localStorage
+                                localStorage.setItem(EMPLOYEE_STORAGE_KEY, this.value);
+                                console.log("Saved employee ID to localStorage:", this.value);
+                                
                                 // Get the selected employee name directly from the dropdown option
                                 const selectedText = this.options[this.selectedIndex].text;
                                 
@@ -223,18 +274,31 @@
                                 // Then load full details
                                 loadEmployeeDetailsFromNewDropdown(this.value);
                             } else {
+                                // Clear saved employee ID when "Choose Employee" is selected
+                                localStorage.removeItem(EMPLOYEE_STORAGE_KEY);
+                                console.log("Cleared saved employee ID from localStorage");
+                                
                                 // Reset when "Choose Employee" is selected
                                 resetEmployeeDisplay();
                             }
                         };
                         
-                        console.log("Dropdown setup complete. Current HTML:", newDropdown.outerHTML);
+                        // If we have a selected value, mark that we've loaded and selected
+                        if (hasSelected) {
+                            employeesLoadedAndSelected = true;
+                        }
+                        
+                        console.log("Dropdown setup complete. Current value:", newDropdown.value);
                     } else {
                         console.error("Dropdown: No employees found in API response");
+                        // If no employees, change placeholder
+                        newDropdown.innerHTML = '<option value="">No employees found</option>';
                     }
                 })
                 .catch(function(error) {
                     console.error("Dropdown error:", error);
+                    // On error, change placeholder
+                    newDropdown.innerHTML = '<option value="">Error loading employees</option>';
                 });
         }
 
@@ -251,8 +315,7 @@
                         console.log("Department value:", data.employee.department);
                         
                         var emp = data.employee;
-                        // We already set the name for immediate feedback, but we'll set it again here
-                        // in case there's any formatting difference between dropdown and API response
+                        // Update the name display
                         document.getElementById('employee-name').textContent = emp.full_name;
                         
                         // IMPORTANT: Force department display with exactly what we received
@@ -296,6 +359,6 @@
         }
 
         // Run immediately to populate the dropdown
-        setTimeout(loadEmployeesForNewDropdown, 500);
+        setTimeout(loadEmployeesForNewDropdown, 100);
     </script>
 </div>

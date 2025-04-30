@@ -21,7 +21,7 @@
             <div class="flex justify-between items-center">
                 <div>
                     <p class="text-sm font-medium text-gray-700">Total Employees</p>
-                    <p class="text-2xl font-bold text-indigo-700">24</p>
+                    <p class="text-2xl font-bold text-indigo-700" id="totalEmployees">0</p>
                 </div>
                 <i class="fas fa-users text-3xl text-indigo-400"></i>
             </div>
@@ -31,7 +31,7 @@
             <div class="flex justify-between items-center">
                 <div>
                     <p class="text-sm font-medium text-gray-700">Active Today</p>
-                    <p class="text-2xl font-bold text-green-600">18</p>
+                    <p class="text-2xl font-bold text-green-600" id="activeEmployees">0</p>
                 </div>
                 <i class="fas fa-user-check text-3xl text-green-400"></i>
             </div>
@@ -491,9 +491,86 @@
         // Load time entries when the document is ready
         document.addEventListener('DOMContentLoaded', function() {
             loadTodayTimeEntries();
+            loadEmployeeStats();
             
             // Set up auto-refresh every minute
-            setInterval(loadTodayTimeEntries, 60000);
+            setInterval(function() {
+                loadTodayTimeEntries();
+                loadEmployeeStats();
+            }, 60000);
         });
+        
+        // Function to load employee statistics
+        function loadEmployeeStats() {
+            // First try to get data from the stats endpoint
+            fetch('/api/employees/stats/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update total employees count from API stats
+                        document.getElementById('totalEmployees').textContent = data.stats.total_employees;
+                        
+                        // Update active employees count
+                        document.getElementById('activeEmployees').textContent = data.stats.active_employees;
+                        
+                        // Update pending approval count
+                        const pendingCountElement = document.querySelector('.text-yellow-600');
+                        if (pendingCountElement) {
+                            pendingCountElement.textContent = data.stats.pending_approval;
+                        }
+                        
+                        // Update average hours
+                        const avgHoursElement = document.querySelector('.text-blue-600');
+                        if (avgHoursElement) {
+                            avgHoursElement.textContent = data.stats.avg_hours;
+                        }
+                    } else {
+                        // If stats endpoint fails, fetch employees directly
+                        fetchEmployeeCount();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading employee statistics:', error);
+                    // Fallback to direct employee count if stats API fails
+                    fetchEmployeeCount();
+                });
+        }
+        
+        // Fallback function to fetch employee count directly
+        function fetchEmployeeCount() {
+            fetch('/api/employees/get/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.employees) {
+                        // Set the actual count of employees from the API response
+                        document.getElementById('totalEmployees').textContent = data.employees.length;
+                        
+                        // After getting total employees, fetch active employees
+                        fetchActiveEmployees();
+                    } else {
+                        console.error('Failed to load employees');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching employees:', error);
+                });
+        }
+        
+        // Function to fetch active employees (those with approval activity in the last 24 hours)
+        function fetchActiveEmployees() {
+            fetch('/api/time/active-employees/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update active employees count
+                        document.getElementById('activeEmployees').textContent = data.active_count;
+                    } else {
+                        console.error('Failed to load active employees');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching active employees:', error);
+                });
+        }
     </script>
 </div>
