@@ -35,6 +35,9 @@ class Welcome(View):
 
 class AdminLogin(View):
     def get(self, request):
+        # If user is already logged in and is staff, redirect them to the admin dashboard
+        if request.user.is_authenticated and request.user.is_staff:
+            return HttpResponseRedirect(reverse('PunchClock:dashboard'))
         return render(request, "punch/admin/adminlogin.html")
 
     def post(self, request):
@@ -50,11 +53,16 @@ class AdminLogin(View):
             except User.DoesNotExist:
                 pass
 
-        if user is not None and user.is_staff:  # Ensure the user is an admin
-            login(request, user)
-            return HttpResponseRedirect(reverse('PunchClock:dashboard'))  # Redirect to admin dashboard
+        if user is not None:
+            if user.is_staff:  # Ensure the user is an admin
+                login(request, user)
+                return HttpResponseRedirect(reverse('PunchClock:dashboard'))  # Redirect to admin dashboard
+            else:
+                # User exists but is not an admin
+                return render(request, "punch/admin/adminlogin.html", {"error": "You do not have admin privileges. Please log in as an employee instead."})
         else:
-            return render(request, "punch/admin/adminlogin.html", {"error": "Invalid credentials or not an admin."})
+            # Invalid credentials
+            return render(request, "punch/admin/adminlogin.html", {"error": "Invalid email or password. Please try again."})
 
 class LoginPuch(View):
     def get(self, request):
@@ -82,6 +90,7 @@ class AddEmployeeView(View):
         email = request.POST.get('employee_email')
         password = request.POST.get('employee_password')
         role = request.POST.get('employee_role')
+        department = request.POST.get('employee_department')
 
         if not all([full_name, email, password, role]):
             return JsonResponse({
@@ -89,17 +98,28 @@ class AddEmployeeView(View):
             }, status=400)
 
         try:
+            # Create the user account
             user = User.objects.create_user(username=email, email=email, password=password)
             user.first_name = full_name.split(' ')[0]
             user.last_name = ' '.join(full_name.split(' ')[1:]) if ' ' in full_name else ''
             user.is_staff = True if role == 'manager' else False
             user.save()
+            
+            # Create the employee record linked to the admin user
+            if role != 'manager':
+                from .models import Employee
+                Employee.objects.create(
+                    user=user,
+                    admin=request.user,
+                    department=department or ""
+                )
+            
             return JsonResponse({
                 'success': 'User created successfully.'
             }, status=200)
         except Exception as e:
             return JsonResponse({
-                'error': 'An unexpected error occurred while creating the user. Please try again.'
+                'error': f'An unexpected error occurred while creating the user: {str(e)}'
             }, status=500)
 
 @method_decorator(login_required, name='dispatch')
@@ -221,4 +241,59 @@ class UpdateCompanyNameView(View):
             return JsonResponse({'success': True, 'message': 'Company name updated successfully.'})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class GetEmployeesView(View):
+    def get(self, request):
+        try:
+            from .models import Employee
+            # Get all employees managed by this admin
+            employees = Employee.objects.filter(admin=request.user).select_related('user')
+            
+            employees_data = [{
+                'id': employee.id,
+                'user_id': employee.user.id,
+                'full_name': employee.full_name,  # Changed from 'name' to 'full_name'
+                'email': employee.user.email,
+                'department': employee.department
+            } for employee in employees]
+            
+            return JsonResponse({
+                'success': True,
+                'employees': employees_data
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class GetEmployeeDetailsView(View):
+    def get(self, request, employee_id):
+        try:
+            from .models import Employee
+            # Get the specific employee managed by this admin
+            employee = Employee.objects.select_related('user').get(id=employee_id, admin=request.user)
+            
+            return JsonResponse({
+                'success': True,
+                'employee': {
+                    'id': employee.id,
+                    'user_id': employee.user.id,
+                    'full_name': employee.full_name,  # Changed from 'name' to 'full_name'
+                    'email': employee.user.email,
+                    'department': employee.department
+                }
+            })
+        except Employee.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Employee not found'
+            }, status=404)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=400)
 

@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WorkTime Tracker | Manager Login</title>
+    {% load static %}
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{% static 'punch/css/punch.css' %}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
@@ -35,18 +37,24 @@
     <div class="login-card bg-white rounded-xl shadow-md p-8 max-w-md w-full">
         <h1 class="text-3xl font-bold text-gray-800 mb-4 text-center">Manager Login</h1>
         <p class="text-gray-600 mb-6 text-center">Sign in to access the manager dashboard</p>
-        <form>
+        {% if error %}
+        <div class="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
+            {{ error }}
+        </div>
+        {% endif %}
+        <form method="post" action="{% url 'PunchClock:adminlogin' %}">
+            {% csrf_token %}
             <div class="mb-4">
                 <label for="email" class="block text-sm font-medium text-gray-700">Email Address</label>
-                <input type="email" id="email" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your email">
+                <input type="email" id="email" name="email" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your email" required>
             </div>
             <div class="mb-4">
                 <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
-                <input type="password" id="password" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your password">
+                <input type="password" id="password" name="password" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your password" required>
             </div>
             <div class="flex items-center justify-between mb-4">
                 <label class="flex items-center">
-                    <input type="checkbox" class="form-checkbox h-5 w-5 text-indigo-600">
+                    <input type="checkbox" name="remember_me" class="form-checkbox h-5 w-5 text-indigo-600">
                     <span class="ml-2 text-gray-700">Remember me</span>
                 </label>
                 <a href="#" class="text-sm text-indigo-600 hover:underline">Forgot password?</a>
