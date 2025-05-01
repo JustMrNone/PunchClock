@@ -1,4 +1,4 @@
-# Punch Clock
+# Remote Work Tracker
 
 ![Punch Clock Logo](PunchClock/static/punch/img/favicon.png)
 
