@@ -1,49 +1,151 @@
 # Punch Clock
 
-Punch Clock is a Django-based digital punch clock designed to simplify time tracking and administrative tasks for remote workers, freelancers, and businesses. Whether you're managing a remote team or looking to organize your personal work hours, Punch Clock provides an efficient and user-friendly solution.
+![Punch Clock Logo](PunchClock/static/punch/img/favicon.png)
 
-## Why Choose Punch Clock?
+Punch Clock is a comprehensive time-tracking solution built with Django and Docker, designed for remote teams, freelancers, and businesses of all sizes.
 
-In today's world, where remote work and flexible schedules are becoming the norm, keeping track of time can be challenging. Punch Clock is here to help you:
+[![GitHub License](https://img.shields.io/github/license/JustMrNone/PunchClock)](https://github.com/JustMrNone/PunchClock/blob/main/LICENSE)
 
-- **Track Work Hours**: Easily log your punch-ins and punch-outs to maintain accurate records of your work hours.
-- **Manage Holidays**: Keep track of holidays and time off with built-in holiday management features.
-- **Streamline Administration**: Administrators can view and manage employee records, generate reports, and oversee team activities from a centralized dashboard.
-- **Enhance Productivity**: By providing clear insights into time usage, Punch Clock helps users optimize their schedules and improve productivity.
+## 🚀 Features
 
-## Key Features
+- **Time Entry Management**: Clock in/out with ease and track working hours
+- **Holiday & Calendar Integration**: Plan and track holidays and time off
+- **Team Overview**: Visualize your team's attendance and productivity
+- **Administrative Dashboard**: Comprehensive tools for managers
+- **User Profiles**: Personalized settings and preferences
+- **Reporting & Exports**: Generate custom reports and export data
+- **Containerized**: Easy deployment with Docker
+- **Responsive Design**: Works on desktop and mobile devices
 
-- **Digital Time Tracking**: Log work hours with precision, whether you're working from home or on the go.
-- **Holiday Management**: Plan and track holidays effortlessly.
-- **User-Friendly Interface**: Intuitive templates for both employees and administrators.
-- **Customizable Settings**: Tailor the application to meet your specific needs.
-- **Remote Work Ready**: Perfect for distributed teams and individuals managing their own schedules.
+## 📋 Requirements
 
-## Who Is It For?
+- Docker and Docker Compose (for containerized setup)
+- Python 3.10+ (for local development)
+- PostgreSQL (handled by Docker)
+- Node.js and npm (for frontend assets)
 
-Punch Clock is ideal for:
+## 🛠️ Quick Start
 
-- **Remote Teams**: Keep your team connected and organized, no matter where they are.
-- **Freelancers**: Manage your time effectively and maintain accurate records for clients.
-- **Small Businesses**: Simplify workforce management and administrative tasks.
-- **Individuals**: Take control of your personal time management and productivity.
+### Using Docker (Recommended)
 
-## How It Works
+```bash
+# Clone the repository
+git clone https://github.com/JustMrNone/PunchClock.git
+cd PunchClock/ClockingInAndOut
 
-Punch Clock is built using Django, a powerful web framework, ensuring a seamless and reliable experience. The application includes:
+# Start the application
+docker-compose up -d
 
-- A web-based interface for logging time and managing tasks.
-- Administrative tools for overseeing employee activities and generating reports.
-- Customizable templates for a personalized user experience.
+# Run migrations
+docker-compose exec web python manage.py migrate
 
-## Get Started
+# Create superuser
+docker-compose exec web python manage.py createsuperuser
 
-To get started with Punch Clock, simply clone the repository, set up the environment, and deploy the application. Detailed setup instructions are available in the documentation.
+# Access the application at http://localhost:8000
+```
 
-## Contribute
+### Local Development
 
-We welcome contributions from the community! If you have ideas for new features or improvements, feel free to submit a pull request or open an issue.
+```bash
+# Clone the repository
+git clone https://github.com/JustMrNone/PunchClock.git
+cd PunchClock/ClockingInAndOut
 
-## License
+# Set up Python environment (using Poetry)
+poetry install
+poetry shell
 
-Punch Clock is open-source software licensed under the MIT License. Feel free to use, modify, and distribute it as per the terms of the license.
+# Apply migrations
+python manage.py migrate
+
+# Create superuser
+python manage.py createsuperuser
+
+# Build frontend assets
+npm install
+npm run build
+
+# Run the development server
+python manage.py runserver
+```
+
+## 📖 Documentation
+
+Comprehensive documentation is available to help you get started, understand the architecture, and contribute to Punch Clock.
+
+### Viewing Documentation
+
+The documentation is built using MkDocs with the Material theme:
+
+1. **Using the convenience scripts (recommended):**
+   ```bash
+   # On Windows
+   .\serve-docs.ps1
+   
+   # On Linux/macOS
+   chmod +x serve-docs.sh
+   ./serve-docs.sh
+   ```
+   This will install required packages if needed and start the documentation server on port 8080.
+
+2. **Access the documentation** by navigating to:
+   ```
+   http://localhost:8080/
+   ```
+
+Documentation includes:
+- Setup instructions
+- Architecture overview
+- Deployment guides
+- User guides
+- API documentation
+- Space-themed Git workflow
+
+## 🧪 Testing
+
+```bash
+# Run tests using Docker
+docker-compose exec web python manage.py test
+
+# Run tests locally
+python manage.py test
+```
+
+## 🚢 Deployment
+
+See [deployment documentation](docs/deployment.md) for detailed instructions on deploying Punch Clock to production environments.
+
+## 🧩 Project Structure
+
+```
+ClockingInAndOut/        # Django project container
+├── PunchClock/          # Main application
+│   ├── models.py        # Data models
+│   ├── views.py         # View controllers
+│   ├── templates/       # HTML templates
+│   └── static/          # Static assets
+├── docs/                # Documentation
+├── docker-compose.yml   # Docker configuration
+└── Dockerfile           # Container definition
+```
+
+## 👥 Contributing
+
+We welcome contributions to Punch Clock! Please see our [contributing guide](docs/contributing.md) for details on our space-themed Git workflow, coding standards, and pull request process.
+
+## 📝 License
+
+Punch Clock is open source software licensed under the MIT License. See [LICENSE](LICENSE) for more information.
+
+## 🔮 Roadmap
+
+- Mobile application
+- Advanced reporting features
+- Integration with payroll systems
+- Multi-language support
+- Team messaging features
+
+## 📞 Support
+
+If you encounter any issues or have questions, please [create an issue](https://github.com/JustMrNone/PunchClock/issues) on our GitHub repository.
