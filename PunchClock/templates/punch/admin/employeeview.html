@@ -751,26 +751,24 @@
                 const totalHoursElement = entryElement.querySelectorAll('.font-medium')[3];
                 totalHoursElement.textContent = `${entry.total_hours} hours`;
                 
-                // Update notes if they exist
+                // Handle notes section
                 const notesContainer = entryElement.querySelector('.mt-3.pt-3:not(.flex)');
-                if (entry.notes) {
-                    if (notesContainer) {
-                        notesContainer.querySelector('p:last-child').textContent = entry.notes;
-                    } else {
-                        // Add notes section if it doesn't exist
-                        const newNotesSection = document.createElement('div');
-                        newNotesSection.className = 'mt-3 pt-3 border-t border-gray-200';
-                        newNotesSection.innerHTML = `
-                            <p class="text-xs text-gray-500">Notes</p>
-                            <p class="text-sm">${entry.notes}</p>
-                        `;
-                        
-                        const actionsRow = entryElement.querySelector('.mt-3.pt-3.flex');
-                        entryElement.insertBefore(newNotesSection, actionsRow);
-                    }
-                } else if (notesContainer) {
-                    // Remove notes section if it exists but notes are empty
+                const actionsRow = entryElement.querySelector('.mt-3.pt-3.flex');
+                
+                // Remove existing notes container if it exists
+                if (notesContainer) {
                     notesContainer.remove();
+                }
+                
+                // Add new notes section only if notes exist and are not empty
+                if (entry.notes && entry.notes.trim()) {
+                    const newNotesSection = document.createElement('div');
+                    newNotesSection.className = 'mt-3 pt-3 border-t border-gray-200';
+                    newNotesSection.innerHTML = `
+                        <p class="text-xs text-gray-500">Notes</p>
+                        <p class="text-sm">${entry.notes}</p>
+                    `;
+                    entryElement.insertBefore(newNotesSection, actionsRow);
                 }
             }
 

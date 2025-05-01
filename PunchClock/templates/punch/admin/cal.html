@@ -36,6 +36,8 @@
         <button id="add-global-holiday" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Add Global Holiday</button>
         <button id="remove-holiday" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Remove Holiday</button>
         <button id="mark-weekend" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mark as Weekend</button>
+        <button id="remove-note" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Remove Note</button>
+        <button id="remove-employee-note" class="hidden w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Remove Employee Note</button>
     </div>
 
     <!-- Custom Modal -->
@@ -211,6 +213,22 @@
                 contextMenu.style.display = 'block';
                 contextMenu.style.left = `${x}px`;
                 contextMenu.style.top = `${y}px`;
+                
+                // Show or hide the employee note removal button based on context
+                const removeEmployeeNoteBtn = document.getElementById('remove-employee-note');
+                if (currentEmployeeId && personalNotes[selectedDate]) {
+                    removeEmployeeNoteBtn.classList.remove('hidden');
+                } else {
+                    removeEmployeeNoteBtn.classList.add('hidden');
+                }
+                
+                // Show or hide the note removal button based on context
+                const removeNoteBtn = document.getElementById('remove-note');
+                if (notes[selectedDate]) {
+                    removeNoteBtn.classList.remove('hidden');
+                } else {
+                    removeNoteBtn.classList.add('hidden');
+                }
             }
 
             function hideContextMenu() {
@@ -511,6 +529,40 @@
                         });
                     }
                 });
+            });
+
+            // Remove Note handler
+            document.getElementById('remove-note').addEventListener('click', function() {
+                hideContextMenu();
+                if (notes[selectedDate]) {
+                    delete notes[selectedDate];
+                    saveCalendarSettings();
+                    renderCalendar(currentDisplayYear, currentDisplayMonth);
+                }
+            });
+
+            // Remove Employee Note handler
+            document.getElementById('remove-employee-note').addEventListener('click', function() {
+                hideContextMenu();
+                if (currentEmployeeId && personalNotes[selectedDate]) {
+                    fetch(`/api/personal-notes/delete/?employee_id=${currentEmployeeId}&date=${selectedDate}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            delete personalNotes[selectedDate];
+                            renderCalendar(currentDisplayYear, currentDisplayMonth);
+                        } else {
+                            console.error('Error removing employee note:', data.message);
+                        }
+                    })
+                    .catch(error => console.error('Error removing employee note:', error));
+                }
             });
         });
     </script>

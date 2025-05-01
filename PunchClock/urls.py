@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/calendar-settings/update-global-holiday/', views.UpdateGlobalHolidayView.as_view(), name='update_global_holiday'),
     path('api/personal-notes/get/', views.GetPersonalNotesView.as_view(), name='get_personal_notes'),
     path('api/personal-notes/update/', views.UpdatePersonalNotesView.as_view(), name='update_personal_notes'),
+    path('api/personal-notes/delete/', views.DeletePersonalNoteView.as_view(), name='delete_personal_notes'),
     
     # Company settings
     path('update-company-name/', views.UpdateCompanyNameView.as_view(), name='update_company_name'),

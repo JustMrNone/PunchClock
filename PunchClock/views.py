@@ -281,6 +281,45 @@ class UpdatePersonalNotesView(LoginRequiredMixin, View):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
+class DeletePersonalNoteView(LoginRequiredMixin, View):
+    def post(self, request):
+        try:
+            employee_id = request.GET.get('employee_id')
+            date = request.GET.get('date')
+            
+            if not date:
+                return JsonResponse({'success': False, 'message': 'Date parameter is required'}, status=400)
+            
+            if employee_id and request.user.is_staff:
+                # Admin deleting an employee's note
+                try:
+                    employee = Employee.objects.get(id=employee_id, admin=request.user)
+                    personal_notes = PersonalNote.objects.get(user=employee.user)
+                except Employee.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': 'Employee not found or not authorized'}, status=404)
+                except PersonalNote.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': 'No notes found'}, status=404)
+            else:
+                # User deleting their own note
+                try:
+                    personal_notes = PersonalNote.objects.get(user=request.user)
+                except PersonalNote.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': 'No notes found'}, status=404)
+            
+            # Remove the note for the specific date
+            notes = personal_notes.notes
+            if date in notes:
+                del notes[date]
+                personal_notes.notes = notes
+                personal_notes.save()
+                
+            return JsonResponse({
+                'success': True,
+                'message': 'Note deleted successfully'
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
 @method_decorator(login_required, name='dispatch')
 class RemoveHolidayView(View):
     def post(self, request):
