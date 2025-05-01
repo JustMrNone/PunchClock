@@ -35,7 +35,7 @@ urlpatterns = [
     # Add new API endpoints for employees
     path('api/employees/get/', views.GetEmployeesView.as_view(), name='get_employees'),
     path('api/employees/<int:employee_id>/', views.GetEmployeeDetailsView.as_view(), name='get_employee_details'),
-    path('api/employees/<int:user_id>/delete/', views.delete_employee, name='delete_employee'),
+
 
     # Time tracking endpoints
     path('api/time/punch/', views.PunchTimeView.as_view(), name='punch_time'),
