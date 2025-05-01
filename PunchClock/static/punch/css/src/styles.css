@@ -2,4 +2,278 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Your custom CSS can go here */
+/* Base theme variables */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-card: #ffffff;
+    --bg-hover: #f3f4ff;
+    --bg-active: #e0e7ff;
+    --bg-accent: #eef2ff;
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
+    --border-color: #e5e7eb;
+    --input-bg: #ffffff;
+    --input-border: #d1d5db;
+    --sidebar-bg: #1e1b4b;
+    --highlight-bg: #f3f4ff;
+    --highlight-border: #6366f1;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --success-bg: #dcfce7;
+    --success-text: #166534;
+    --warning-bg: #fef9c3;
+    --warning-text: #854d0e;
+    --error-bg: #fee2e2;
+    --error-text: #991b1b;
+}
+
+/* Dark mode variables */
+[data-theme='dark'] {
+    --bg-primary: #121212; /* Darker background */
+    --bg-secondary: #1e1e1e; /* Slightly lighter for contrast */
+    --bg-card: #242424; /* Card background */
+    --bg-hover: #333333; /* Hover background */
+    --bg-active: #444444; /* Active background */
+    --text-primary: #ffffff; /* White text for primary content */
+    --text-secondary: #cccccc; /* Light gray for secondary text */
+    --text-muted: #999999; /* Muted text */
+    --border-color: #444444; /* Border color */
+    --input-bg: #1e1e1e; /* Input background */
+    --input-border: #555555; /* Input border */
+    --sidebar-bg: #1a1a1a; /* Sidebar background */
+    --highlight-bg: #333333; /* Highlight background */
+    --highlight-border: #666666; /* Highlight border */
+    --shadow-color: rgba(0, 0, 0, 0.7); /* Shadow color */
+    --success-bg: #14532d; /* Success background */
+    --success-text: #a7f3d0; /* Success text */
+    --warning-bg: #78350f; /* Warning background */
+    --warning-text: #fcd34d; /* Warning text */
+    --error-bg: #7f1d1d; /* Error background */
+    --error-text: #fca5a5; /* Error text */
+}
+
+/* Apply theme variables */
+body {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.bg-white, .bg-gray-50 {
+    background-color: var(--bg-card) !important;
+}
+
+.text-gray-800 {
+    color: var(--text-primary) !important;
+}
+
+.text-gray-600, .text-gray-700 {
+    color: var(--text-secondary) !important;
+}
+
+.text-gray-500 {
+    color: var(--text-muted) !important;
+}
+
+.border-gray-200, .border-gray-300 {
+    border-color: var(--border-color) !important;
+}
+
+input, select, textarea {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--text-primary) !important;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+input::placeholder, select::placeholder, textarea::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* Buttons */
+.bg-gray-100 {
+    background-color: var(--bg-accent) !important;
+}
+
+.hover\:bg-gray-100:hover {
+    background-color: var(--bg-hover) !important;
+}
+
+.hover\:bg-gray-200:hover {
+    background-color: var(--bg-active) !important;
+}
+
+/* Status colors */
+.bg-green-100 {
+    background-color: var(--success-bg) !important;
+}
+
+.text-green-800 {
+    color: var(--success-text) !important;
+}
+
+.bg-yellow-100 {
+    background-color: var(--warning-bg) !important;
+}
+
+.text-yellow-800 {
+    color: var(--warning-text) !important;
+}
+
+.bg-red-100 {
+    background-color: var(--error-bg) !important;
+}
+
+.text-red-800 {
+    color: var(--error-text) !important;
+}
+
+/* Sidebar dark mode */
+#sidebar {
+    background-color: var(--sidebar-bg) !important;
+    transition: background-color 0.3s ease;
+}
+
+/* Time cards and other cards */
+.time-card {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px var(--shadow-color);
+    transition: all 0.3s ease;
+}
+
+.time-card:hover {
+    box-shadow: 0 10px 15px var(--shadow-color);
+}
+
+/* Calendar styles */
+.calendar-day {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    transition: all 0.3s ease;
+}
+
+.calendar-day:hover {
+    background-color: var(--bg-hover) !important;
+}
+
+.calendar-day.selected {
+    background-color: var(--bg-active) !important;
+}
+
+/* Table styles */
+.divide-gray-200 > * + * {
+    border-color: var(--border-color) !important;
+}
+
+thead.bg-gray-50 {
+    background-color: var(--bg-secondary) !important;
+}
+
+tr.hover\:bg-gray-50:hover {
+    background-color: var(--bg-hover) !important;
+}
+
+/* Modal styles */
+.modal-content {
+    background-color: var(--bg-card) !important;
+}
+
+/* Calendar day states */
+.calendar-day.bg-red-50 {
+    background-color: var(--error-bg) !important;
+}
+
+/* Ensure dark mode styles are applied correctly */
+[data-theme='dark'] body {
+    background-color: var(--bg-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .bg-white, [data-theme='dark'] .bg-gray-50 {
+    background-color: var(--bg-card) !important;
+}
+
+[data-theme='dark'] .text-gray-800 {
+    color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .text-gray-600, [data-theme='dark'] .text-gray-700 {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme='dark'] .text-gray-500 {
+    color: var(--text-muted) !important;
+}
+
+[data-theme='dark'] .border-gray-200, [data-theme='dark'] .border-gray-300 {
+    border-color: var(--border-color) !important;
+}
+
+[data-theme='dark'] input, [data-theme='dark'] select, [data-theme='dark'] textarea {
+    background-color: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] input::placeholder, [data-theme='dark'] select::placeholder, [data-theme='dark'] textarea::placeholder {
+    color: var(--text-muted) !important;
+}
+
+[data-theme='dark'] .time-card {
+    background-color: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: 0 4px 6px var(--shadow-color) !important;
+}
+
+[data-theme='dark'] .calendar-day {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme='dark'] .modal-content {
+    background-color: var(--bg-card) !important;
+}
+
+/* Fix employee name readability in dark mode */
+[data-theme='dark'] .employee-name {
+    color: var(--text-primary) !important;
+    font-weight: bold;
+}
+
+/* Fix for elements with dark text on dark background */
+[data-theme='dark'] .text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .bg-gray-900 {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* Adjust timezone box background for dark mode */
+[data-theme='dark'] .bg-indigo-50 {
+    background-color: #33353f !important;
+}
+
+/* Adjust navigation buttons for dark mode */
+[data-theme='dark'] .bg-gray-100 {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme='dark'] .hover\:bg-gray-200:hover {
+    background-color: var(--bg-hover) !important;
+}
+
+/* Adjust sidebar link hover color for dark mode */
+[data-theme='dark'] .sidebar-link:hover {
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Ensure weekends are red in dark mode */
+[data-theme='dark'] .calendar-day.bg-red-50 {
+    background-color: var(--error-bg) !important;
+    color: var(--error-text) !important;
+}

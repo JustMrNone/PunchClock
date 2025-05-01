@@ -140,9 +140,7 @@
                     <option value="dark">Dark Mode</option>
                     <option value="light">Light Mode</option>
                 </select>
-            </div>
-            <div class="flex justify-end">
-                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
+                <p class="mt-2 text-sm text-gray-500">Choose how you'd like the application to appear</p>
             </div>
         </form>
     </div>
@@ -605,5 +603,67 @@
         
         // Load settings when page loads
         loadCompanySettings();
+
+        // Theme switching functionality
+        const themeSelect = document.getElementById('theme-type');
+        const html = document.documentElement;
+
+        // Function to set theme with animation
+        function setTheme(theme, animate = true) {
+            try {
+                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const currentTheme = html.getAttribute('data-theme');
+                
+                let newTheme;
+                if (theme === 'system') {
+                    newTheme = systemDark ? 'dark' : 'light';
+                } else {
+                    newTheme = theme;
+                }
+                
+                // Only change if theme is actually different
+                if (currentTheme !== newTheme) {
+                    if (animate) {
+                        // Add transition
+                        document.body.style.transition = 'background-color 0.3s ease';
+                        setTimeout(() => {
+                            document.body.style.transition = '';
+                        }, 300);
+                    }
+                    
+                    html.setAttribute('data-theme', newTheme);
+                    localStorage.setItem('theme', theme); // Store user preference
+                    
+                    // Apply theme immediately
+                    window.dispatchEvent(new CustomEvent('themechange', { detail: { theme: newTheme } }));
+                }
+            } catch (e) {
+                console.error('Error setting theme:', e);
+                showNotification('Failed to update theme', 'error');
+            }
+        }
+
+        // Function to get current theme preference
+        function getCurrentTheme() {
+            return localStorage.getItem('theme') || 'system';
+        }
+
+        // Initialize theme selector
+        themeSelect.value = getCurrentTheme();
+        setTheme(getCurrentTheme(), false);
+
+        // Listen for theme changes
+        themeSelect.addEventListener('change', (e) => {
+            setTheme(e.target.value);
+            showNotification('Theme updated successfully');
+        });
+
+        // Listen for system preference changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            const currentTheme = getCurrentTheme();
+            if (currentTheme === 'system') {
+                setTheme('system');
+            }
+        });
     });
 </script>

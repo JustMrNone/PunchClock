@@ -1,5 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+<!-- Critical theme initialization -->
+<script>
+  (function() {
+    try {
+      const savedTheme = localStorage.getItem('theme') || 'system';
+      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = savedTheme === 'system' ? (systemDark ? 'dark' : 'light') : savedTheme;
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {
+      console.error('Theme initialization failed:', e);
+    }
+  })();
+</script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
