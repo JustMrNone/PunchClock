@@ -1,0 +1,101 @@
+site_name: Punch Clock Documentation
+site_url: https://justmrnone.github.io/PunchClock/
+site_description: Documentation for the Punch Clock employee time tracking application
+site_author: Punch Clock Development Team
+
+repo_url: https://github.com/JustMrNone/PunchClock
+repo_name: JustMrNone/PunchClock
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: light blue
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.tabs.link
+  icon:
+    repo: fontawesome/brands/github
+    logo: material/clock
+  favicon: img/favicon.png
+
+nav:
+  - Home: index.md
+  - Setup Guide: setup.md
+  - Architecture: architecture.md
+  - Usage:
+    - Basic Usage: usage.md
+    - Admin Interface: admin.md
+  - Deployment: deployment.md
+  - Development:
+    - Testing: tests.md
+    - Contributing: contributing.md
+    - Space-Themed Git Workflow: git-workflow.md
+  - API:
+    - Overview: api/index.md
+  - Changelog: CHANGELOG.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - codehilite:
+      guess_lang: false
+  - def_list
+  - footnotes
+  - meta
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.smartsymbols
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: google
+            show_source: true
+  - git-revision-date-localized:
+      fallback_to_build_date: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/JustMrNone/PunchClock
+      name: Punch Clock on GitHub
+  version:
+    provider: mike
+  analytics:
+    provider: google
+    property: !ENV GOOGLE_ANALYTICS_KEY
+
+extra_css:
+  - stylesheets/extra.css
+
+copyright: Copyright &copy; 2025 Punch Clock Development Team
