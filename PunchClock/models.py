@@ -81,6 +81,13 @@ class PersonalNote(models.Model):
 class CompanySettings(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     company_name = models.CharField(max_length=255, default="")
+    work_hours = models.DecimalField(max_digits=4, decimal_places=2, default=8.0)
+    rest_hours = models.DecimalField(max_digits=4, decimal_places=2, default=1.0)
+    
+    @property
+    def total_work_hours(self):
+        """Calculate effective work hours by subtracting rest hours from work hours"""
+        return max(0, self.work_hours - self.rest_hours)
 
 class Employee(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -91,3 +98,12 @@ class Employee(models.Model):
     @property
     def full_name(self):
         return f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username
+
+class ProfilePicture(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile_picture')
+    image = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Profile picture for {self.user.username}"

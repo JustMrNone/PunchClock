@@ -69,11 +69,12 @@
             <!-- Context Menu - Only for personal notes -->
             <div id="context-menu" class="hidden absolute bg-white shadow-md rounded-lg p-2 z-50">
                 <button id="add-personal-note" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Add Personal Note</button>
+                <button id="remove-personal-note" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Remove Personal Note</button>
             </div>
         </div>
 
         <!-- Note Modal -->
-        <div id="custom-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+        <div id="custom-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 items-center justify-center z-50">
             <div class="bg-white rounded-lg shadow-lg p-6 w-96">
                 <h3 id="modal-title" class="text-lg font-semibold text-gray-800 mb-4">Add Personal Note</h3>
                 <form id="modal-form">
@@ -189,6 +190,8 @@
             }
 
             function savePersonalNote() {
+                console.log('Saving personal note:', personalNotes);
+                
                 fetch('/api/personal-notes/update/', {
                     method: 'POST',
                     headers: {
@@ -199,13 +202,55 @@
                         notes: personalNotes
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    return response.json();
+                })
                 .then(data => {
-                    if (!data.success) {
+                    if (data.success) {
+                        // Show success notification
+                        showNotification('Note saved successfully!');
+                    } else {
                         console.error('Error saving personal note:', data.message);
+                        showNotification('Failed to save note!', 'error');
                     }
                 })
-                .catch(error => console.error('Error saving personal note:', error));
+                .catch(error => {
+                    console.error('Error saving personal note:', error);
+                    showNotification('Failed to save note!', 'error');
+                });
+            }
+
+            // Function to show notification
+            function showNotification(message, type = 'success') {
+                // Create notification element if it doesn't exist
+                let notification = document.getElementById('notification');
+                if (!notification) {
+                    notification = document.createElement('div');
+                    notification.id = 'notification';
+                    notification.style.position = 'fixed';
+                    notification.style.bottom = '20px';
+                    notification.style.right = '20px';
+                    notification.style.padding = '10px 20px';
+                    notification.style.borderRadius = '4px';
+                    notification.style.color = 'white';
+                    notification.style.fontWeight = '500';
+                    notification.style.zIndex = '9999';
+                    notification.style.transition = 'transform 0.3s ease-out';
+                    document.body.appendChild(notification);
+                }
+
+                // Set color based on type
+                notification.style.backgroundColor = type === 'success' ? '#10b981' : '#ef4444';
+                notification.textContent = message;
+                
+                // Show notification
+                notification.style.transform = 'translateY(0)';
+                
+                // Hide after 3 seconds
+                setTimeout(() => {
+                    notification.style.transform = 'translateY(100px)';
+                }, 3000);
             }
 
             // Helper function to get CSRF token
@@ -307,6 +352,11 @@
                     if (weekendDays.includes(dayOfWeek)) {
                         dayCell.classList.add('bg-red-50');
                     }
+                    
+                    // Apply holiday styling (same as weekends)
+                    if (holidays[dateString]) {
+                        dayCell.classList.add('bg-red-50');
+                    }
 
                     // Create day number container
                     const dayContent = document.createElement('div');
@@ -379,6 +429,19 @@
                         renderCalendar(currentDisplayYear, currentDisplayMonth);
                     }
                 });
+            });
+
+            // Handle personal note removal
+            document.getElementById('remove-personal-note').addEventListener('click', function() {
+                hideContextMenu();
+                if (personalNotes[selectedDate]) {
+                    delete personalNotes[selectedDate];
+                    savePersonalNote();
+                    showNotification('Note removed successfully!');
+                    renderCalendar(currentDisplayYear, currentDisplayMonth);
+                } else {
+                    showNotification('No note to remove', 'error');
+                }
             });
 
             // Initial render

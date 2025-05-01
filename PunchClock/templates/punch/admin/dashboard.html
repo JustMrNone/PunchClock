@@ -101,6 +101,7 @@
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Time</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Time</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -108,7 +109,7 @@
                 <tbody id="timeEntryTable" class="bg-white divide-y divide-gray-200">
                     <!-- Time entries will be loaded dynamically here -->
                     <tr id="noEntriesRow">
-                        <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                        <td colspan="8" class="px-6 py-4 text-center text-gray-500">
                             No time entries for today
                         </td>
                     </tr>
@@ -212,6 +213,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.start_time}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.end_time || 'N/A'}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.total_hours.toFixed(2)} hours</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.timestamp || entry.created_at || 'N/A'}</td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
                                             ${entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}

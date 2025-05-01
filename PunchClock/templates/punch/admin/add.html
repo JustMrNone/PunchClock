@@ -53,7 +53,10 @@
             </div>
             <div class="mb-4">
                 <label for="employee-department" class="block text-sm font-medium text-gray-700">Department</label>
-                <input type="text" id="employee-department" name="employee_department" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter department">
+                <select id="employee-department" name="employee_department" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">-- Select Department --</option>
+                    <!-- Departments will be loaded dynamically -->
+                </select>
             </div>
             <div class="mb-4">
                 <label for="employee-hire-date" class="block text-sm font-medium text-gray-700">Hire Date</label>
@@ -66,6 +69,63 @@
         </form>
     </div>
 
+    <!-- Department Management Section -->
+    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Department Management</h3>
+        
+        <!-- Department Toast -->
+        <div id="dept-toast" class="mb-4 px-4 py-2 rounded hidden">
+            <div class="flex justify-between items-center w-full">
+                <span id="dept-toast-message" class="flex-1"></span>
+                <button onclick="hideDeptToast()" class="ml-4">&times;</button>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Add Department -->
+            <div>
+                <h4 class="text-lg font-medium text-gray-700 mb-3">Add Department</h4>
+                <form id="add-department-form">
+                    <div class="mb-4">
+                        <label for="department-name" class="block text-sm font-medium text-gray-700">Department Name</label>
+                        <input type="text" id="department-name" name="department_name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter department name">
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Add Department</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Remove Department -->
+            <div>
+                <h4 class="text-lg font-medium text-gray-700 mb-3">Remove Department</h4>
+                <form id="remove-department-form">
+                    <div class="mb-4">
+                        <label for="remove-department-select" class="block text-sm font-medium text-gray-700">Select Department</label>
+                        <select id="remove-department-select" name="department" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">-- Select Department --</option>
+                            <!-- Departments will be loaded dynamically -->
+                        </select>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" id="delete-department-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete Department</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Department List -->
+        <div class="mt-6">
+            <h4 class="text-lg font-medium text-gray-700 mb-3">Current Departments</h4>
+            <div id="department-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Departments will be loaded dynamically -->
+                <div class="p-4 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin mr-2"></i> Loading departments...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="bg-white rounded-xl p-6 shadow-md mt-8">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Remove Employee</h3>
         <form id="remove-employee-form">
@@ -73,10 +133,7 @@
                 <label for="department-select" class="block text-sm font-medium text-gray-700">Select Department</label>
                 <select id="department-select" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="">-- Select Department --</option>
-                    <option value="engineering">Engineering</option>
-                    <option value="marketing">Marketing</option>
-                    <option value="sales">Sales</option>
-                    <option value="operations">Operations</option>
+                    <!-- Departments will be loaded dynamically -->
                 </select>
             </div>
             <div class="mb-4">
@@ -91,9 +148,13 @@
         </form>
     </div>
     <script>
-        function showToast(message) {
+        function showToast(message, isSuccess = true) {
             const toast = document.getElementById('toast');
             document.getElementById('toast-message').textContent = message;
+            toast.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
+            toast.classList.add(isSuccess ? 'bg-green-100' : 'bg-red-100');
+            toast.classList.add(isSuccess ? 'text-green-800' : 'text-red-800');
+            toast.classList.add('border', isSuccess ? 'border-green-200' : 'border-red-200');
             toast.classList.remove('hidden');
             setTimeout(() => toast.classList.add('hidden'), 3000);
         }
@@ -101,25 +162,164 @@
         function hideToast() {
             document.getElementById('toast').classList.add('hidden');
         }
+        
+        function showDeptToast(message, isSuccess = true) {
+            const toast = document.getElementById('dept-toast');
+            document.getElementById('dept-toast-message').textContent = message;
+            toast.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
+            toast.classList.add(isSuccess ? 'bg-green-100' : 'bg-red-100');
+            toast.classList.add(isSuccess ? 'text-green-800' : 'text-red-800');
+            toast.classList.add('border', isSuccess ? 'border-green-200' : 'border-red-200');
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
 
-        // Handle form submission
-        document.getElementById('add-employee-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const form = this;
-            const formData = new FormData(form);
-            
-            fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
+        function hideDeptToast() {
+            document.getElementById('dept-toast').classList.add('hidden');
+        }
+
+        // Load departments for all department dropdowns
+        function loadDepartments() {
+            fetch('/api/departments/')
+                .then(response => response.json())
+                .then(data => {
+                    // Check if we have departments data in the expected format
+                    const departments = data.departments || [];
+                    
+                    // Populate all department dropdowns
+                    const dropdowns = [
+                        document.getElementById('employee-department'),
+                        document.getElementById('remove-department-select'),
+                        document.getElementById('department-select')
+                    ];
+                    
+                    dropdowns.forEach(dropdown => {
+                        if (dropdown) {
+                            // Clear existing options except the first one
+                            dropdown.innerHTML = '<option value="">-- Select Department --</option>';
+                            
+                            // Add department options
+                            departments.forEach(dept => {
+                                const option = document.createElement('option');
+                                option.value = dept.name || dept.id; // Use name as value if id isn't available
+                                option.textContent = dept.name;
+                                dropdown.appendChild(option);
+                            });
+                        }
+                    });
+                    
+                    // Update department list
+                    updateDepartmentList(departments);
+                })
+                .catch(error => {
+                    console.error('Error loading departments:', error);
+                    showDeptToast('Failed to load departments. Please try again.', false);
+                });
+        }
+        
+        // Update the department list display
+        function updateDepartmentList(departments) {
+            const departmentList = document.getElementById('department-list');
+            if (departmentList) {
+                departmentList.innerHTML = '';
+                
+                if (departments.length === 0) {
+                    departmentList.innerHTML = '<div class="p-4 text-center text-gray-500">No departments found</div>';
+                    return;
                 }
-            })
-            .then(response => response.json())
-            .then(data => {
-                showToast(data.success ? data.message : (data.error || 'Failed to add employee'));
-                if (data.success) form.reset();
-            });
+                
+                departments.forEach(dept => {
+                    const deptItem = document.createElement('div');
+                    deptItem.className = 'bg-gray-50 p-4 rounded-lg border border-gray-200';
+                    deptItem.innerHTML = `
+                        <h5 class="font-medium text-gray-800">${dept.name}</h5>
+                        <p class="text-sm text-gray-500">${dept.employee_count || 0} employees</p>
+                    `;
+                    departmentList.appendChild(deptItem);
+                });
+            }
+        }
+        
+        // Handle department selection for employee removal
+        document.getElementById('department-select').addEventListener('change', function() {
+            const departmentId = this.value;
+            const employeeSelect = document.getElementById('employee-select');
+            const deleteButton = document.getElementById('delete-employee-btn');
+            
+            // Reset employee dropdown
+            employeeSelect.innerHTML = '<option value="">-- Select Employee --</option>';
+            employeeSelect.disabled = !departmentId;
+            deleteButton.disabled = true;
+            
+            if (departmentId) {
+                // Load employees for the selected department
+                fetch(`/api/departments/${departmentId}/employees/`)
+                    .then(response => response.json())
+                    .then(employees => {
+                        employees.forEach(employee => {
+                            const option = document.createElement('option');
+                            option.value = employee.id;
+                            option.textContent = employee.name;
+                            employeeSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading employees:', error);
+                        showToast('Failed to load employees. Please try again.', false);
+                    });
+            }
+        });
+        
+        // Enable/disable delete button based on employee selection
+        document.getElementById('employee-select').addEventListener('change', function() {
+            const deleteButton = document.getElementById('delete-employee-btn');
+            deleteButton.disabled = !this.value;
+        });
+        
+        // Handle employee deletion
+        document.getElementById('delete-employee-btn').addEventListener('click', function() {
+            const employeeId = document.getElementById('employee-select').value;
+            
+            if (!employeeId) return;
+            
+            if (confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
+                fetch(`/api/employees/${employeeId}/delete/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to delete employee');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    showToast('Employee deleted successfully', true);
+                    
+                    // Reset selection
+                    document.getElementById('employee-select').innerHTML = '<option value="">-- Select Employee --</option>';
+                    document.getElementById('employee-select').disabled = true;
+                    document.getElementById('delete-employee-btn').disabled = true;
+                    
+                    // Refresh employee list
+                    const departmentId = document.getElementById('department-select').value;
+                    if (departmentId) {
+                        // Trigger the change event to reload employees
+                        document.getElementById('department-select').dispatchEvent(new Event('change'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Failed to delete employee. Please try again.', false);
+                });
+            }
+        });
+        
+        // Load departments when the page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDepartments();
         });
     </script>
 </div>

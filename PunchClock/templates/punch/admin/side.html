@@ -5,8 +5,12 @@
     </div>
     <div class="p-4">
         <div class="flex items-center mb-6">
-            <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold mr-3">
-                <span>AD</span>
+            <!-- Profile picture with globe/marble styling -->
+            <div id="sidebar-profile-pic" class="w-10 h-10 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden relative border-2 border-white shadow-sm mr-4" style="box-shadow: 0 3px 6px rgba(0,0,0,0.15), inset 0 -2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+                <!-- User initials shown when no profile picture -->
+                <span id="sidebar-user-initials" class="text-sm font-bold text-white">{{ request.user.first_name|slice:":1" }}{{ request.user.last_name|slice:":1" }}</span>
+                <!-- Profile image container -->
+                <img id="sidebar-profile-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Profile Picture">
             </div>
             <div>
                 <p class="font-medium">Admin Dashboard</p>
@@ -214,3 +218,71 @@
         </button>
     </div>
 </div>
+
+<!-- Add script to load profile picture in sidebar -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebarUserInitials = document.getElementById('sidebar-user-initials');
+        const sidebarProfileImage = document.getElementById('sidebar-profile-image');
+        const sidebarProfilePic = document.getElementById('sidebar-profile-pic');
+        
+        // Set initial background and styling for the initials display
+        sidebarProfilePic.classList.add('bg-indigo-500');
+        
+        // Handle user initial generation
+        function getInitials() {
+            const firstName = '{{ request.user.first_name }}';
+            const lastName = '{{ request.user.last_name }}';
+            
+            if (firstName && lastName) {
+                return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+            } else if (firstName) {
+                return firstName.charAt(0).toUpperCase();
+            } else if (lastName) {
+                return lastName.charAt(0).toUpperCase();
+            } else {
+                return '{{ request.user.username|slice:":2" }}'.toUpperCase();
+            }
+        }
+        
+        // Set user initials
+        if (sidebarUserInitials.textContent.trim() === '') {
+            sidebarUserInitials.textContent = getInitials();
+        }
+        
+        // Fetch profile picture from server
+        function fetchProfilePicture() {
+            fetch('/api/profile-picture/get/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.has_image) {
+                        // Update UI with the server image
+                        sidebarUserInitials.classList.add('hidden');
+                        sidebarProfileImage.classList.remove('hidden');
+                        sidebarProfileImage.src = data.image_url;
+                        // Remove background color when showing the image
+                        sidebarProfilePic.classList.remove('bg-gradient-to-b', 'from-indigo-400', 'to-indigo-600');
+                        sidebarProfilePic.classList.add('bg-white');
+                    } else {
+                        // Ensure the initials are shown with proper background
+                        sidebarUserInitials.classList.remove('hidden');
+                        sidebarProfileImage.classList.add('hidden');
+                        // Make sure the background gradient is applied
+                        sidebarProfilePic.classList.remove('bg-white');
+                        sidebarProfilePic.classList.add('bg-indigo-500');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching profile picture:', error);
+                    // On error, ensure the initials are shown with proper background
+                    sidebarUserInitials.classList.remove('hidden');
+                    sidebarProfileImage.classList.add('hidden');
+                    sidebarProfilePic.classList.remove('bg-white');
+                    sidebarProfilePic.classList.add('bg-indigo-500');
+                });
+        }
+        
+        // Load profile picture when page loads
+        fetchProfilePicture();
+    });
+</script>

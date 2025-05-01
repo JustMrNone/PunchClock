@@ -69,6 +69,11 @@
                 <a href="{% url 'PunchClock:employee_calendar' %}" class="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors">
                     <i class="fas fa-calendar-alt mr-2"></i>Calendar
                 </a>
+                {% if request.user.is_staff %}
+                <a href="{% url 'PunchClock:dashboard' %}" class="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors">
+                    <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                </a>
+                {% endif %}
                 <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
                     <span id="userInitial">{{ initials }}</span>
                 </div>
@@ -281,14 +286,25 @@
 
         // Load recent activities
         function loadRecentActivities(highlightNewest = false) {
+            const activitiesContainer = document.getElementById('recent-activities');
+            activitiesContainer.innerHTML = `
+                <div class="p-4 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin mr-2"></i> Loading recent activities...
+                </div>
+            `;
+            
             fetch('/api/time/recent/')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
-                        const activitiesContainer = document.getElementById('recent-activities');
                         activitiesContainer.innerHTML = ''; // Clear existing activities
                         
-                        if (data.entries.length === 0) {
+                        if (!data.entries || data.entries.length === 0) {
                             activitiesContainer.innerHTML = `
                                 <div class="p-4 text-center text-gray-500">
                                     No recent time entries found.
@@ -301,28 +317,36 @@
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         
-                        // Filter entries for today only
-                        const todayEntries = data.entries.filter(entry => {
+                        // Last 4 days for recent activity
+                        const fourDaysAgo = new Date();
+                        fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+                        fourDaysAgo.setHours(0, 0, 0, 0);
+                        
+                        // Filter entries for recent days
+                        const recentEntries = data.entries.filter(entry => {
                             const entryDate = new Date(entry.date);
                             entryDate.setHours(0, 0, 0, 0);
-                            return entryDate.getTime() === today.getTime();
+                            return entryDate.getTime() >= fourDaysAgo.getTime();
                         });
                         
-                        if (todayEntries.length === 0) {
+                        if (recentEntries.length === 0) {
                             activitiesContainer.innerHTML = `
                                 <div class="p-4 text-center text-gray-500">
-                                    No time entries for today.
+                                    No time entries in the last 4 days.
                                 </div>
                             `;
                             return;
                         }
                         
                         // Sort by creation time (newest first)
-                        todayEntries.sort((a, b) => {
-                            return new Date(b.date + ' ' + b.created_at) - new Date(a.date + ' ' + a.created_at);
+                        recentEntries.sort((a, b) => {
+                            return new Date(b.created_at) - new Date(a.created_at);
                         });
                         
-                        todayEntries.forEach((entry, index) => {
+                        // Display only the 5 most recent entries
+                        const entriesToShow = recentEntries.slice(0, 5);
+                        
+                        entriesToShow.forEach((entry, index) => {
                             const activityEl = document.createElement('div');
                             activityEl.className = `flex items-center justify-between p-3 border-b border-gray-100 ${index === 0 && highlightNewest ? 'bg-indigo-50' : ''}`;
                             
@@ -333,10 +357,21 @@
                             };
                             
                             const statusColor = statusColors[entry.status] || 'yellow';
-                            const date = new Date(entry.date);
+                            const entryDate = new Date(entry.date);
                             const today = new Date();
-                            const isToday = date.toDateString() === today.toDateString();
-                            const dateString = isToday ? 'Today' : entry.date;
+                            
+                            // Format date display
+                            let dateString;
+                            if (entryDate.toDateString() === today.toDateString()) {
+                                dateString = 'Today';
+                            } else if (entryDate.toDateString() === new Date(today - 86400000).toDateString()) {
+                                dateString = 'Yesterday';
+                            } else {
+                                dateString = entryDate.toLocaleDateString();
+                            }
+                            
+                            // Format time for display
+                            const createdTime = entry.created_at.split(' ')[1] || entry.created_at;
                             
                             activityEl.innerHTML = `
                                 <div class="flex items-center">
@@ -345,14 +380,14 @@
                                     </div>
                                     <div>
                                         <p class="text-sm font-medium">Time ${entry.end_time ? 'submitted' : 'started'}</p>
-                                        <p class="text-xs text-gray-500">${dateString}, ${entry.created_at}</p>
+                                        <p class="text-xs text-gray-500">${dateString}, ${createdTime}</p>
                                     </div>
                                 </div>
                                 <div class="flex items-center">
                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${statusColor}-100 text-${statusColor}-800 mr-3">
                                         ${entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
                                     </span>
-                                    <span class="text-sm font-medium">${entry.total_hours.toFixed(2)} hours</span>
+                                    <span class="text-sm font-medium">${parseFloat(entry.total_hours).toFixed(2)} hrs</span>
                                 </div>
                             `;
                             
@@ -365,9 +400,23 @@
                             
                             activitiesContainer.appendChild(activityEl);
                         });
+                    } else {
+                        activitiesContainer.innerHTML = `
+                            <div class="p-4 text-center text-gray-500">
+                                Error loading recent activities. Please try again.
+                            </div>
+                        `;
+                        console.error('API returned error:', data.message);
                     }
                 })
-                .catch(error => console.error('Error loading recent activities:', error));
+                .catch(error => {
+                    console.error('Error loading recent activities:', error);
+                    activitiesContainer.innerHTML = `
+                        <div class="p-4 text-center text-gray-500">
+                            Error loading recent activities. Please check your connection.
+                        </div>
+                    `;
+                });
         }
 
         // Punch button click handler

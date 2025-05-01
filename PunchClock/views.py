@@ -1,7 +1,7 @@
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseRedirect, JsonResponse
 from django.urls import reverse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.views import View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import User
@@ -10,7 +10,15 @@ from django.utils.decorators import method_decorator
 from django.utils import timezone
 import json
 from datetime import datetime, time, timedelta
-from .models import CalendarSettings, PersonalNote, CompanySettings, TimeEntry, Employee
+from .models import CalendarSettings, PersonalNote, CompanySettings, TimeEntry, Employee, ProfilePicture
+# Import additional libraries for image handling
+from PIL import Image
+import io
+import base64
+import os
+import re
+from django.core.files.base import ContentFile
+
 # Create your views here.
 
 class Admin(LoginRequiredMixin, UserPassesTestMixin, View):
@@ -25,29 +33,42 @@ class Admin(LoginRequiredMixin, UserPassesTestMixin, View):
         return super().handle_no_permission()  # Default behavior for unauthenticated users
 
     def get(self, request):
-        return render(request, 'punch/admin/admin.html')
+        # Fetch company name for the settings template
+        company_name = ""
+        try:
+            company_settings, created = CompanySettings.objects.get_or_create(user=request.user)
+            company_name = company_settings.company_name
+        except Exception:
+            pass  # Silently continue if there's an issue fetching company settings
+            
+        return render(request, 'punch/admin/admin.html', {'company_name': company_name})
 
 class PunchCard(LoginRequiredMixin, View):
     def get(self, request):
         context = {}
-        if request.user.is_staff:
-            # For admin users, use their user info directly
-            context['display_name'] = request.user.get_full_name() or request.user.username
-            context['initials'] = ''.join(x[0].upper() for x in request.user.get_full_name().split()) if request.user.get_full_name() else request.user.username[:2].upper()
-        else:
-            try:
+        try:
+            # Try to get existing employee record
+            employee = Employee.objects.get(user=request.user)
+            context['display_name'] = employee.full_name
+            context['initials'] = ''.join(x[0].upper() for x in employee.full_name.split()) if employee.full_name else employee.user.username[:2].upper()
+        except Employee.DoesNotExist:
+            # Create employee record if none exists
+            if request.user.is_staff:
+                # For admin users who don't have an employee record
+                employee = Employee.objects.create(
+                    user=request.user,
+                    admin=request.user,  # Admin is their own admin
+                    department="Management",
+                    hire_date=timezone.now().date()
+                )
+            else:
                 # For regular employees
-                employee = Employee.objects.get(user=request.user)
-            except Employee.DoesNotExist:
-                # Get the first admin user in the system to assign as the employee's admin
                 admin_user = User.objects.filter(is_staff=True).first()
                 if not admin_user:
-                    # If no admin exists, make this user their own admin temporarily
                     admin_user = request.user
                     request.user.is_staff = True
                     request.user.save()
                 
-                # Create employee record with required admin field
                 employee = Employee.objects.create(
                     user=request.user,
                     admin=admin_user,
@@ -167,8 +188,21 @@ class UpdateCalendarSettingsView(View):
             notes = data.get('notes', {})
             weekend_days = [int(day) for day in data.get('weekendDays', [])]  # Convert to int to ensure proper storage
 
-            # Get or create the user's calendar settings
-            calendar_settings, created = CalendarSettings.objects.get_or_create(user=request.user)
+            # Check if employee_id is provided (for admin users updating employee calendars)
+            employee_id = request.GET.get('employee_id')
+            
+            if employee_id and request.user.is_staff:
+                # Admin updating an employee's calendar settings
+                try:
+                    employee = Employee.objects.get(id=employee_id, admin=request.user)
+                    calendar_settings, created = CalendarSettings.objects.get_or_create(user=employee.user)
+                except Employee.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': 'Employee not found or not authorized'}, status=404)
+            else:
+                # User updating their own calendar settings
+                calendar_settings, created = CalendarSettings.objects.get_or_create(user=request.user)
+                
+            # Update the settings
             calendar_settings.holidays = holidays
             calendar_settings.notes = notes
             calendar_settings.weekend_days = weekend_days
@@ -182,7 +216,20 @@ class UpdateCalendarSettingsView(View):
 class GetCalendarSettingsView(View):
     def get(self, request):
         try:
-            calendar_settings, created = CalendarSettings.objects.get_or_create(user=request.user)
+            # Check if employee_id is provided (for admin users viewing employee calendars)
+            employee_id = request.GET.get('employee_id')
+            
+            if employee_id and request.user.is_staff:
+                # Admin requesting an employee's calendar settings
+                try:
+                    employee = Employee.objects.get(id=employee_id, admin=request.user)
+                    calendar_settings, created = CalendarSettings.objects.get_or_create(user=employee.user)
+                except Employee.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': 'Employee not found or not authorized'}, status=404)
+            else:
+                # User requesting their own calendar settings
+                calendar_settings, created = CalendarSettings.objects.get_or_create(user=request.user)
+                
             return JsonResponse({
                 'success': True,
                 'holidays': calendar_settings.holidays,
@@ -192,21 +239,6 @@ class GetCalendarSettingsView(View):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
-@method_decorator(login_required, name='dispatch')
-class UpdateCalendarSettingsView(View):
-    def post(self, request):
-        try:
-            data = json.loads(request.body)
-            calendar_settings, _ = CalendarSettings.objects.get_or_create(user=request.user)
-            calendar_settings.holidays = data.get('holidays', [])
-            calendar_settings.notes = data.get('notes', "")
-            calendar_settings.weekend_days = data.get('weekendDays', [])
-            calendar_settings.save()
-            return JsonResponse({'success': True})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)}, status=400)
-        
-
 class EmployeeCalendarView(LoginRequiredMixin, View):
     def get(self, request):
         return render(request, 'punch/punchcard/empcal.html')
@@ -214,7 +246,20 @@ class EmployeeCalendarView(LoginRequiredMixin, View):
 class GetPersonalNotesView(LoginRequiredMixin, View):
     def get(self, request):
         try:
-            personal_notes, created = PersonalNote.objects.get_or_create(user=request.user)
+            # Check if employee_id is provided (for admin users viewing employee calendars)
+            employee_id = request.GET.get('employee_id')
+            
+            if employee_id and request.user.is_staff:
+                # Admin requesting an employee's personal notes
+                try:
+                    employee = Employee.objects.get(id=employee_id, admin=request.user)
+                    personal_notes, created = PersonalNote.objects.get_or_create(user=employee.user)
+                except Employee.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': 'Employee not found or not authorized'}, status=404)
+            else:
+                # User requesting their own personal notes
+                personal_notes, created = PersonalNote.objects.get_or_create(user=request.user)
+                
             return JsonResponse({
                 'success': True,
                 'notes': personal_notes.notes
@@ -279,6 +324,43 @@ class UpdateCompanyNameView(View):
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 @method_decorator(login_required, name='dispatch')
+class GetCompanySettingsView(View):
+    def get(self, request):
+        try:
+            company_settings, created = CompanySettings.objects.get_or_create(user=request.user)
+            
+            return JsonResponse({
+                'success': True,
+                'company_name': company_settings.company_name,
+                'work_hours': company_settings.work_hours,
+                'rest_hours': company_settings.rest_hours,
+                'total_work_hours': float(company_settings.total_work_hours)
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class UpdateCompanySettingsView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            work_hours = data.get('work_hours', 0)
+            rest_hours = data.get('rest_hours', 0)
+
+            company_settings, created = CompanySettings.objects.get_or_create(user=request.user)
+            company_settings.work_hours = work_hours
+            company_settings.rest_hours = rest_hours
+            company_settings.save()
+
+            return JsonResponse({
+                'success': True,
+                'message': 'Company settings updated successfully.',
+                'total_work_hours': float(company_settings.total_work_hours)
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
 class GetEmployeesView(View):
     def get(self, request):
         try:
@@ -308,15 +390,61 @@ class GetEmployeesView(View):
 class GetEmployeeDetailsView(View):
     def get(self, request, employee_id):
         try:
-            from .models import Employee
+            from .models import Employee, TimeEntry
             # Get the specific employee managed by this admin
             employee = Employee.objects.select_related('user').get(id=employee_id)
             
             # Make sure we get the department, even if it's empty
             department = employee.department if employee.department else '--'
             
+            # Get employee statistics with detailed debugging
+            weekly_hours = 0
+            daily_average = 0
+            
+            try:
+                print(f"DEBUG - Calculating statistics for employee ID: {employee_id}, Name: {employee.full_name}")
+                
+                # Debug: Check for time entries
+                today = timezone.now().date()
+                week_start = today - timedelta(days=today.weekday())
+                week_end = week_start + timedelta(days=6)
+                
+                entries_count = TimeEntry.objects.filter(employee=employee).count()
+                week_entries_count = TimeEntry.objects.filter(
+                    employee=employee, 
+                    date__range=[week_start, week_end]
+                ).count()
+                
+                print(f"DEBUG - Total time entries found: {entries_count}")
+                print(f"DEBUG - Time entries this week ({week_start} to {week_end}): {week_entries_count}")
+                
+                if week_entries_count > 0:
+                    # List the entries for debugging
+                    week_entries = TimeEntry.objects.filter(
+                        employee=employee,
+                        date__range=[week_start, week_end]
+                    )
+                    for entry in week_entries:
+                        print(f"DEBUG - Entry: Date={entry.date}, Start={entry.start_time}, End={entry.end_time}, Hours={entry.total_hours}")
+                
+                # Get time statistics
+                weekly_hours = TimeEntry.get_weekly_hours(employee)
+                daily_average = TimeEntry.get_daily_average(employee)
+                
+                print(f"DEBUG - Calculated weekly_hours: {weekly_hours}")
+                print(f"DEBUG - Calculated daily_average: {daily_average}")
+                
+            except Exception as stats_error:
+                print(f"ERROR - Getting time statistics: {stats_error}")
+                import traceback
+                traceback.print_exc()
+            
+            # Format statistics (round to 1 decimal place)
+            weekly_hours_formatted = round(float(weekly_hours), 1) if weekly_hours is not None else 0
+            daily_average_formatted = round(float(daily_average), 1) if daily_average is not None else 0
+            
             # Debug print to check what we're sending
-            print(f"Sending employee data - Name: {employee.full_name}, Department: {department}")
+            print(f"Sending employee data - Name: {employee.full_name}, Department: {department}, Weekly Hours: {weekly_hours_formatted}, Daily Average: {daily_average_formatted}")
             
             return JsonResponse({
                 'success': True,
@@ -325,15 +453,21 @@ class GetEmployeeDetailsView(View):
                     'user_id': employee.user.id,
                     'full_name': employee.full_name,
                     'email': employee.user.email,
-                    'department': department
+                    'department': department,
+                    'weekly_hours': weekly_hours_formatted,
+                    'daily_average': daily_average_formatted
                 }
             })
         except Employee.DoesNotExist:
+            print(f"ERROR - Employee not found: {employee_id}")
             return JsonResponse({
                 'success': False,
                 'message': 'Employee not found'
             }, status=404)
         except Exception as e:
+            print(f"ERROR - Unexpected error getting employee details: {e}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({
                 'success': False,
                 'message': str(e)
@@ -347,8 +481,27 @@ class PunchTimeView(View):
             start_time = datetime.strptime(data.get('start_time'), '%H:%M').time()
             end_time = datetime.strptime(data.get('end_time'), '%H:%M').time() if data.get('end_time') else None
             
-            # Get employee record for the current user
-            employee = Employee.objects.get(user=request.user)
+            # Get or create employee record for the current user
+            try:
+                employee = Employee.objects.get(user=request.user)
+            except Employee.DoesNotExist:
+                # If the user is an admin but doesn't have an employee record, create one
+                if request.user.is_staff:
+                    employee = Employee.objects.create(
+                        user=request.user,
+                        admin=request.user,  # Admin is their own admin
+                        department="Management",
+                        hire_date=timezone.now().date()
+                    )
+                else:
+                    # For regular users, find an admin to assign
+                    admin_user = User.objects.filter(is_staff=True).first()
+                    employee = Employee.objects.create(
+                        user=request.user,
+                        admin=admin_user,
+                        department="",
+                        hire_date=timezone.now().date()
+                    )
             
             # Create time entry
             entry = TimeEntry.objects.create(
@@ -387,8 +540,27 @@ class GetTimeStatisticsView(View):
                 if employee.admin != request.user:
                     return JsonResponse({'success': False, 'message': 'Unauthorized'}, status=403)
             else:
-                # Employee viewing their own stats
-                employee = Employee.objects.get(user=request.user)
+                # Get or create an employee record for the current user
+                try:
+                    employee = Employee.objects.get(user=request.user)
+                except Employee.DoesNotExist:
+                    # If admin without employee record, create one
+                    if request.user.is_staff:
+                        employee = Employee.objects.create(
+                            user=request.user,
+                            admin=request.user,  # Admin is their own admin
+                            department="Management",
+                            hire_date=timezone.now().date()
+                        )
+                    else:
+                        # Regular employee should have an admin
+                        admin_user = User.objects.filter(is_staff=True).first()
+                        employee = Employee.objects.create(
+                            user=request.user,
+                            admin=admin_user,
+                            department="",
+                            hire_date=timezone.now().date()
+                        )
             
             weekly_hours = TimeEntry.get_weekly_hours(employee)
             daily_average = TimeEntry.get_daily_average(employee)
@@ -409,13 +581,15 @@ class GetTimeStatisticsView(View):
 class GetRecentActivitiesView(View):
     def get(self, request):
         try:
+            # Get the current employee
             employee = Employee.objects.get(user=request.user)
-            # Get entries from the last 4 days only (instead of 7)
+            
+            # Get entries from the last 4 days
             four_days_ago = timezone.now().date() - timedelta(days=4)
             recent_entries = TimeEntry.objects.filter(
                 employee=employee,
                 date__gte=four_days_ago
-            ).order_by('-created_at')
+            ).order_by('-created_at')[:10]  # Limit to 10 most recent entries
             
             entries_data = []
             for entry in recent_entries:
@@ -424,9 +598,9 @@ class GetRecentActivitiesView(View):
                     'date': entry.date.strftime('%Y-%m-%d'),
                     'start_time': entry.start_time.strftime('%I:%M %p'),
                     'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
-                    'total_hours': float(entry.total_hours),
+                    'total_hours': float(entry.total_hours) if entry.total_hours else 0,
                     'status': entry.status,
-                    'created_at': entry.created_at.strftime('%I:%M %p')
+                    'created_at': entry.created_at.strftime('%Y-%m-%d %I:%M %p')
                 })
             
             return JsonResponse({
@@ -436,6 +610,9 @@ class GetRecentActivitiesView(View):
         except Employee.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Employee not found'}, status=404)
         except Exception as e:
+            print(f"Error in GetRecentActivitiesView: {e}")  # Debug log
+            import traceback
+            traceback.print_exc()  # Print detailed error for debugging
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 @method_decorator(login_required, name='dispatch')
@@ -446,15 +623,41 @@ class GetTodayTimeEntriesView(View):
             today = timezone.now().date()
             
             if request.user.is_staff:
-                # For admin users, get all time entries for today from all their managed employees
-                employees = Employee.objects.filter(admin=request.user)
+                # Check if admin has an employee record
+                try:
+                    admin_employee = Employee.objects.get(user=request.user)
+                except Employee.DoesNotExist:
+                    # Create employee record for admin
+                    admin_employee = Employee.objects.create(
+                        user=request.user,
+                        admin=request.user,  # Admin is their own admin
+                        department="Management",
+                        hire_date=timezone.now().date()
+                    )
+                
+                # Get entries for both managed employees and admin's own entries
+                employees = list(Employee.objects.filter(admin=request.user))
+                # Include admin's own employee recordb
+                if admin_employee not in employees:
+                    employees.append(admin_employee)
+                    
                 time_entries = TimeEntry.objects.filter(
                     employee__in=employees,
                     date=today
                 ).select_related('employee')
             else:
-                # Regular employees can only see their own time entries
-                employee = Employee.objects.get(user=request.user)
+                # For regular employees
+                try:
+                    employee = Employee.objects.get(user=request.user)
+                except Employee.DoesNotExist:
+                    admin_user = User.objects.filter(is_staff=True).first()
+                    employee = Employee.objects.create(
+                        user=request.user,
+                        admin=admin_user,
+                        department="",
+                        hire_date=timezone.now().date()
+                    )
+                
                 time_entries = TimeEntry.objects.filter(
                     employee=employee,
                     date=today
@@ -472,7 +675,8 @@ class GetTodayTimeEntriesView(View):
                     'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
                     'total_hours': float(entry.total_hours),
                     'status': entry.status,
-                    'created_at': entry.created_at.strftime('%I:%M %p')
+                    'created_at': entry.created_at.strftime('%I:%M %p'),
+                    'timestamp': entry.created_at.strftime('%I:%M %p')
                 })
             
             return JsonResponse({
@@ -785,4 +989,327 @@ class GetActiveEmployeesView(View):
             })
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class UpdateGlobalHolidayView(View):
+    def post(self, request):
+        try:
+            # Only admins can set global holidays
+            if not request.user.is_staff:
+                return JsonResponse({'success': False, 'message': 'Only administrators can set global holidays'}, status=403)
+            
+            data = json.loads(request.body)
+            date = data.get('date')
+            reason = data.get('reason')
+            
+            if not date or not reason:
+                return JsonResponse({'success': False, 'message': 'Date and reason are required'}, status=400)
+            
+            # Get all employees managed by this admin
+            employees = Employee.objects.filter(admin=request.user).select_related('user')
+            
+            # Add the holiday to the admin's calendar
+            admin_settings, _ = CalendarSettings.objects.get_or_create(user=request.user)
+            admin_settings.holidays = admin_settings.holidays or {}
+            admin_settings.holidays[date] = reason
+            admin_settings.save()
+            
+            # Add the holiday to each employee's calendar
+            for employee in employees:
+                emp_settings, _ = CalendarSettings.objects.get_or_create(user=employee.user)
+                emp_settings.holidays = emp_settings.holidays or {}
+                emp_settings.holidays[date] = reason
+                emp_settings.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Holiday added to {len(employees)} employee calendars'
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class GetEmployeeTimeEntriesView(View):
+    def get(self, request, employee_id):
+        try:
+            # Check if the user has permission to view this employee's time entries
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'You do not have permission to view this employee\'s time entries'
+                }, status=403)
+                
+            # Get the employee
+            employee = Employee.objects.get(id=employee_id)
+            
+            # Check if the employee is managed by this admin
+            if employee.admin != request.user:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'You do not have permission to view this employee\'s time entries'
+                }, status=403)
+            
+            # Get the date from query params, default to today
+            date_param = request.GET.get('date')
+            if date_param:
+                try:
+                    # Parse the date from the query parameter
+                    entry_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+                except ValueError:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Invalid date format. Please use YYYY-MM-DD.'
+                    }, status=400)
+            else:
+                entry_date = timezone.now().date()
+            
+            # Get all time entries for the employee on the specified date
+            time_entries = TimeEntry.objects.filter(
+                employee=employee,
+                date=entry_date
+            ).order_by('-created_at')
+            
+            # Format the time entries for the response
+            entries_data = []
+            for entry in time_entries:
+                entries_data.append({
+                    'id': entry.id,
+                    'type': 'Regular Work Hours',  # Default type since it's not in the model
+                    'date': entry.date.strftime('%Y-%m-%d'),
+                    'start_time': entry.start_time.strftime('%H:%M'),
+                    'end_time': entry.end_time.strftime('%H:%M') if entry.end_time else None,
+                    'total_hours': str(entry.total_hours),
+                    'status': entry.status,
+                    'notes': '',  # Default notes since it's not in the model
+                    'created_at': entry.created_at.strftime('%Y-%m-%d %H:%M:%S')
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'entries': entries_data,
+                'count': len(entries_data)
+            })
+            
+        except Employee.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Employee not found'
+            }, status=404)
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            }, status=500)
+
+@method_decorator(login_required, name='dispatch')
+class ProfilePictureView(View):
+    def post(self, request):
+        try:
+            # Get the image data from the request
+            image_data = request.POST.get('image_data')
+            
+            if not image_data:
+                return JsonResponse({'success': False, 'message': 'No image data provided.'}, status=400)
+            
+            # Parse the base64 data
+            if image_data.startswith('data:image'):
+                # Extract the actual base64 content
+                format, imgstr = image_data.split(';base64,')
+                ext = format.split('/')[-1]
+            else:
+                # If it doesn't have the data:image prefix, assume it's pure base64
+                imgstr = image_data
+                ext = 'png'  # Default to png format
+            
+            # Decode the base64 string
+            data = base64.b64decode(imgstr)
+            
+            # Open the image using PIL
+            img = Image.open(io.BytesIO(data))
+            
+            # Crop to square (take the smaller dimension)
+            size = min(img.width, img.height)
+            left = (img.width - size) // 2
+            top = (img.height - size) // 2
+            right = left + size
+            bottom = top + size
+            
+            # Crop the image to a square
+            img = img.crop((left, top, right, bottom))
+            
+            # Resize to 256x256 (or your desired size)
+            img = img.resize((256, 256), Image.LANCZOS)
+            
+            # Save the image to a bytes buffer
+            buffer = io.BytesIO()
+            img.save(buffer, format=ext.upper())
+            buffer.seek(0)
+            
+            # Create a filename with username and timestamp to avoid collisions
+            import time
+            timestamp = int(time.time())
+            filename = f"{request.user.username}_profile_{timestamp}.{ext}"
+            
+            # Save to database
+            profile_pic, created = ProfilePicture.objects.get_or_create(user=request.user)
+            
+            # If updating an existing image, delete the old one
+            if profile_pic.image:
+                try:
+                    old_path = profile_pic.image.path
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+                except:
+                    pass  # Skip if there's an issue with the old file
+            
+            # Save the new image
+            profile_pic.image.save(filename, ContentFile(buffer.getvalue()), save=True)
+            
+            # Build absolute URL for the image
+            image_url = request.build_absolute_uri(profile_pic.image.url)
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Profile picture updated successfully.',
+                'image_url': image_url
+            })
+        except Exception as e:
+            print(f"Error uploading profile picture: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    
+    def delete(self, request):
+        try:
+            # Get the user's profile picture
+            profile_pic = ProfilePicture.objects.filter(user=request.user).first()
+            
+            if profile_pic and profile_pic.image:
+                # Delete the image file
+                try:
+                    if os.path.exists(profile_pic.image.path):
+                        os.remove(profile_pic.image.path)
+                except:
+                    pass  # Skip if there's an issue with the file
+                
+                # Clear the image field
+                profile_pic.image = None
+                profile_pic.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Profile picture removed successfully.'
+            })
+        except Exception as e:
+            print(f"Error removing profile picture: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class GetProfilePictureView(View):
+    def get(self, request):
+        try:
+            # Get the user's profile picture
+            profile_pic = ProfilePicture.objects.filter(user=request.user).first()
+            
+            if profile_pic and profile_pic.image and profile_pic.image.name:
+                # Generate absolute URL for the image
+                image_url = request.build_absolute_uri(profile_pic.image.url)
+                
+                return JsonResponse({
+                    'success': True,
+                    'has_image': True,
+                    'image_url': image_url
+                })
+            else:
+                return JsonResponse({
+                    'success': True,
+                    'has_image': False,
+                    'image_url': None
+                })
+        except Exception as e:
+            print(f"Error fetching profile picture: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+# Department Management API
+
+@login_required
+def add_department(request):
+    """API endpoint to add a new department"""
+    if not request.user.is_staff:
+        return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        name = data.get('name', '').strip()
+        
+        if not name:
+            return JsonResponse({'success': False, 'message': 'Department name is required'}, status=400)
+        
+        # Check if department with same name already exists
+        if Department.objects.filter(admin=request.user, name=name).exists():
+            return JsonResponse({'success': False, 'message': 'Department with this name already exists'}, status=400)
+        
+        department = Department.objects.create(
+            name=name,
+            admin=request.user
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'department': {
+                'id': department.id,
+                'name': department.name
+            }
+        })
+    
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
+def delete_employee(request, user_id):
+    """
+    API endpoint to delete an employee by user ID.
+    """
+    if request.method == 'POST':
+        try:
+            # Check if user is admin
+            if not request.user.is_staff:
+                return JsonResponse({'success': False, 'message': 'Permission denied'}, status=403)
+            
+            # Don't allow deleting oneself
+            if int(user_id) == request.user.id:
+                return JsonResponse({'success': False, 'message': 'You cannot delete your own account'}, status=400)
+            
+            # Get the employee object by user ID
+            user = User.objects.get(id=user_id)
+            employee = Employee.objects.filter(user=user).first()
+            
+            # Store user information for confirmation message
+            employee_name = f"{user.first_name} {user.last_name}"
+            
+            # Delete the user account (this will cascade delete the employee record)
+            user.delete()
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f"Employee {employee_name} has been successfully removed"
+            })
+            
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'User not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
 

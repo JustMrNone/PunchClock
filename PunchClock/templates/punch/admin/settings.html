@@ -7,18 +7,78 @@
     </header>
     <div class="flex items-center justify-between mb-6 bg-white rounded-xl p-6 shadow-md mt-8">
         <div class="flex items-center">
-            <div class="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
-                <i class="fas fa-user text-2xl"></i>
+            <!-- Updated profile picture container with globe-like styling -->
+            <div id="profile-pic-container" class="w-16 h-16 rounded-full bg-gradient-to-b from-gray-100 to-gray-300 flex items-center justify-center text-gray-600 font-bold overflow-hidden relative border-2 border-white shadow-lg  bg-indigo-500" style="box-shadow: 0 6px 12px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+                <!-- User initials shown when no profile picture -->
+                <span id="user-initials" class="text-xl font-bold text-white">{{ request.user.first_name|slice:":1" }}{{ request.user.last_name|slice:":1" }}</span>
+                <!-- Profile image container -->
+                <img id="profile-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Profile Picture">
+                
+                <!-- Overlay for cropping feedback -->
+                <div id="profile-overlay" class="hidden absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div class="text-white text-xs text-center px-2">Drag to reposition</div>
+                </div>
             </div>
             <div class="ml-4">
                 <h3 class="text-xl font-semibold text-gray-800">Profile Picture</h3>
                 <p class="text-sm text-gray-600">Upload a picture to personalize your profile</p>
             </div>
         </div>
-        <button class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
-            Upload Picture
-        </button>
+        <div class="flex space-x-2">
+            <!-- Remove button (shown only when image exists) -->
+            <button id="remove-pic-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 hidden">
+                Remove
+            </button>
+            <!-- Hidden file input element -->
+            <input type="file" id="profile-pic-input" class="hidden" accept="image/*">
+            <!-- Upload button -->
+            <button id="upload-pic-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                Upload Picture
+            </button>
+        </div>
     </div>
+
+    <!-- Image cropping modal -->
+    <div id="crop-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Crop Your Image</h3>
+                <button id="close-crop-modal-btn" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-4 relative">
+                <div id="crop-container" class="w-full h-64 bg-gray-100 overflow-hidden relative">
+                    <!-- The image will be inserted here by JavaScript -->
+                </div>
+                <div class="text-xs text-gray-500 mt-2 text-center">Drag to position • Use mouse wheel to zoom</div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-crop-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="apply-crop-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete confirmation modal -->
+    <div id="delete-modal" class="hidden fixed inset-0 bg-opacity-75 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Remove Profile Picture</h3>
+                <button id="close-delete-modal-btn" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-6">
+                <p class="text-gray-700">Are you sure you want to remove your profile picture? This action cannot be undone.</p>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Remove Picture</button>
+            </div>
+        </div>
+    </div>
+
     <div class="bg-white rounded-xl p-6 shadow-md">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">General Settings</h3>
         
@@ -52,7 +112,16 @@
             </div>
             <div class="mb-4">
                 <label for="work-hours" class="block text-sm font-medium text-gray-700">Default Work Hours</label>
-                <input type="number" id="work-hours" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter default work hours">
+                <input type="number" id="work-hours" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter default work hours" step="0.01" min="0" max="24">
+            </div>
+            <div class="mb-4">
+                <label for="rest-hours" class="block text-sm font-medium text-gray-700">Default Rest Hours</label>
+                <input type="number" id="rest-hours" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter default rest hours" step="0.01" min="0" max="24">
+            </div>
+            <div class="mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <label class="block text-sm font-medium text-gray-700">Calculated Total Work Hours</label>
+                <div id="total-work-hours" class="mt-1 text-lg font-semibold text-indigo-600">8.0</div>
+                <p class="text-xs text-gray-500 mt-1">Total Work Hours = Work Hours - Rest Hours</p>
             </div>
             <div class="flex justify-end">
                 <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Changes</button>
@@ -78,40 +147,329 @@
         </form>
     </div>
 </div>
-<script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const timezoneSelect = document.getElementById('timezone');
 
-            // Load the saved timezone from localStorage or use the user's local timezone
-            const savedTimezone = localStorage.getItem('selected-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
-            timezoneSelect.value = savedTimezone;
+<!-- Add CropperJS library -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
 
-            // Save the selected timezone to localStorage and update the current time
-            timezoneSelect.addEventListener('change', function() {
-                const selectedTimezone = this.value;
-                localStorage.setItem('selected-timezone', selectedTimezone);
-                updateTime();
-            });
-
-            function updateTime() {
-                const timezone = localStorage.getItem('selected-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
-                const now = new Date().toLocaleString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: true });
-                const currentTimeElement = document.getElementById('current-time');
-                if (currentTimeElement) {
-                    currentTimeElement.textContent = now;
-                }
-            }
-
-            updateTime();
-            setInterval(updateTime, 60000); // Update every minute
-        });
-    </script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Profile picture functionality
+        const uploadBtn = document.getElementById('upload-pic-btn');
+        const fileInput = document.getElementById('profile-pic-input');
+        const userInitials = document.getElementById('user-initials');
+        const profileImage = document.getElementById('profile-image');
+        const removeBtn = document.getElementById('remove-pic-btn');
+        const cropModal = document.getElementById('crop-modal');
+        const cropContainer = document.getElementById('crop-container');
+        const closeCropModalBtn = document.getElementById('close-crop-modal-btn');
+        const cancelCropBtn = document.getElementById('cancel-crop-btn');
+        const applyCropBtn = document.getElementById('apply-crop-btn');
+        
+        // Delete confirmation modal elements
+        const deleteModal = document.getElementById('delete-modal');
+        const closeDeleteModalBtn = document.getElementById('close-delete-modal-btn');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        
+        let cropper;
+        let currentImageUrl = null;
+
+        // Handle user initial generation
+        function getInitials() {
+            const firstName = '{{ request.user.first_name }}';
+            const lastName = '{{ request.user.last_name }}';
+            
+            if (firstName && lastName) {
+                return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+            } else if (firstName) {
+                return firstName.charAt(0).toUpperCase();
+            } else if (lastName) {
+                return lastName.charAt(0).toUpperCase();
+            } else {
+                return '{{ request.user.username|slice:":2" }}'.toUpperCase();
+            }
+        }
+        
+        // Set user initials
+        userInitials.textContent = getInitials();
+
+        // Fetch existing profile picture from server
+        fetchProfilePicture();
+        
+        // Trigger file input when upload button is clicked
+        uploadBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // Handle file selection
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    cropContainer.innerHTML = `<img id="crop-image" src="${e.target.result}" class="max-w-full">`;
+                    const cropImage = document.getElementById('crop-image');
+                    
+                    cropModal.classList.remove('hidden');
+                    
+                    // Initialize cropper after image is loaded
+                    cropImage.onload = function() {
+                        cropper = new Cropper(cropImage, {
+                            aspectRatio: 1,
+                            viewMode: 2,
+                            ready: function() {
+                                // Set initial crop box size to be square
+                                const containerData = cropper.getContainerData();
+                                const minSize = Math.min(containerData.width, containerData.height);
+                                cropper.setCropBoxData({
+                                    width: minSize * 0.8,
+                                    height: minSize * 0.8
+                                });
+                            }
+                        });
+                    };
+                };
+                
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+
+        // Close crop modal
+        closeCropModalBtn.addEventListener('click', closeCropModal);
+        cancelCropBtn.addEventListener('click', closeCropModal);
+        
+        function closeCropModal() {
+            cropModal.classList.add('hidden');
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        }
+
+        // Apply crop
+        applyCropBtn.addEventListener('click', function() {
+            if (cropper) {
+                const croppedCanvas = cropper.getCroppedCanvas({
+                    width: 256,
+                    height: 256,
+                    imageSmoothingEnabled: true,
+                    imageSmoothingQuality: 'high'
+                });
+                const croppedImage = croppedCanvas.toDataURL('image/png');
+                
+                // Update UI first for better user experience
+                userInitials.classList.add('hidden');
+                profileImage.classList.remove('hidden');
+                profileImage.src = croppedImage;
+                removeBtn.classList.remove('hidden');
+                
+                // Close modal
+                closeCropModal();
+                
+                // Upload to server
+                uploadProfilePicture(croppedImage);
+            }
+        });
+
+        // Handle remove button click - show the custom modal instead of alert
+        removeBtn.addEventListener('click', function() {
+            deleteModal.classList.remove('hidden');
+        });
+        
+        // Close delete confirmation modal
+        closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
+        cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+        
+        function closeDeleteModal() {
+            deleteModal.classList.add('hidden');
+        }
+        
+        // Handle confirm delete button
+        confirmDeleteBtn.addEventListener('click', function() {
+            // Close the modal
+            closeDeleteModal();
+            
+            // Show loading notification
+            showNotification('Removing profile picture...', 'info');
+            
+            // Call server to remove the image
+            fetch('/api/profile-picture/', {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update UI
+                    userInitials.classList.remove('hidden');
+                    profileImage.classList.add('hidden');
+                    profileImage.src = '';
+                    removeBtn.classList.add('hidden');
+                    currentImageUrl = null;
+                    
+                    showNotification('Profile picture removed successfully.');
+                } else {
+                    showNotification(data.message || 'Failed to remove profile picture.', false);
+                }
+            })
+            .catch(error => {
+                console.error('Error removing profile picture:', error);
+                showNotification('An error occurred while removing the profile picture.', false);
+            });
+        });
+        
+        // Fetch profile picture from server
+        function fetchProfilePicture() {
+            fetch('/api/profile-picture/get/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.has_image) {
+                        currentImageUrl = data.image_url;
+                        
+                        // Update UI with the server image
+                        userInitials.classList.add('hidden');
+                        profileImage.classList.remove('hidden');
+                        profileImage.src = data.image_url;
+                        removeBtn.classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching profile picture:', error);
+                });
+        }
+        
+        // Upload profile picture to server
+        function uploadProfilePicture(imageData) {
+            // Show loading notification
+            showNotification('Uploading profile picture...', 'info');
+            
+            // Create form data for the upload
+            const formData = new FormData();
+            formData.append('image_data', imageData);
+            
+            // Send to server
+            fetch('/api/profile-picture/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentImageUrl = data.image_url;
+                    profileImage.src = data.image_url; // Use the server URL
+                    showNotification('Profile picture uploaded successfully.');
+                } else {
+                    showNotification(data.message || 'Failed to upload profile picture.', false);
+                }
+            })
+            .catch(error => {
+                console.error('Error uploading profile picture:', error);
+                showNotification('An error occurred while uploading the profile picture.', false);
+            });
+        }
+        
+        // Create notification container
+        const notificationContainer = document.createElement('div');
+        const sidebarWidth = 256; // 16rem sidebar width
+        
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.bottom = '2rem';
+        notificationContainer.style.left = `calc(50% + ${sidebarWidth/2}px)`;
+        notificationContainer.style.transform = 'translateX(-50%)';
+        notificationContainer.style.width = '20rem';
+        notificationContainer.style.zIndex = '50';
+        notificationContainer.style.display = 'none';
+        notificationContainer.id = 'notification-container';
+        document.body.appendChild(notificationContainer);
+        
+        let autoHideTimer = null;
+        
+        // Enhanced notification function
+        function showNotification(message, type = 'success') {
+            // Clear any existing timer
+            if (autoHideTimer) {
+                clearTimeout(autoHideTimer);
+            }
+            
+            // Set styles based on notification type
+            let bgColor, borderColor, textColor;
+            
+            switch(type) {
+                case 'success':
+                    bgColor = 'bg-green-100';
+                    borderColor = 'border-green-500';
+                    textColor = 'text-green-800';
+                    break;
+                case 'error':
+                case false: // For backward compatibility
+                    bgColor = 'bg-red-100';
+                    borderColor = 'border-red-500';
+                    textColor = 'text-red-800';
+                    break;
+                case 'info':
+                    bgColor = 'bg-blue-100';
+                    borderColor = 'border-blue-500';
+                    textColor = 'text-blue-800';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-100';
+                    borderColor = 'border-yellow-500';
+                    textColor = 'text-yellow-800';
+                    break;
+                default:
+                    bgColor = 'bg-green-100';
+                    borderColor = 'border-green-500';
+                    textColor = 'text-green-800';
+            }
+            
+            notificationContainer.innerHTML = `
+                <div class="px-4 py-3 rounded-lg shadow-md ${bgColor} border-l-4 ${borderColor} relative">
+                    <button type="button" id="close-btn" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                        </svg>
+                    </button>
+                    <div class="flex items-center justify-center pr-4">
+                        <p class="text-sm font-medium ${textColor}">${message}</p>
+                    </div>
+                </div>
+            `;
+            
+            // Show the notification
+            notificationContainer.style.display = 'block';
+            
+            // Add close button listener
+            document.getElementById('close-btn').onclick = function() {
+                hideNotification();
+            };
+            
+            // Auto hide after appropriate time based on type
+            const timeout = (type === 'success') ? 3000 : 5000;
+            autoHideTimer = setTimeout(hideNotification, timeout);
+        }
+        
+        // Hide notification function
+        function hideNotification() {
+            notificationContainer.style.display = 'none';
+            if (autoHideTimer) {
+                clearTimeout(autoHideTimer);
+                autoHideTimer = null;
+            }
+        }
+
+        // Existing code for company name editing
         const editButton = document.getElementById('edit-company-name');
         const companyNameInput = document.getElementById('company-name');
 
-        editButton.addEventListener('click', function() {
+        editButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            
             if (companyNameInput.disabled) {
                 companyNameInput.disabled = false;
                 companyNameInput.focus();
@@ -130,18 +488,122 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('Company name updated successfully.');
+                        showNotification('Company name updated successfully.');
                         companyNameInput.disabled = true;
                         editButton.textContent = 'Edit';
                     } else {
-                        alert('Error: ' + data.message);
+                        showNotification(data.message || 'An error occurred while updating company name.', 'error');
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('An unexpected error occurred.');
+                    showNotification('An unexpected error occurred.', 'error');
                 });
             }
         });
+        
+        // Timezone settings
+        const timezoneSelect = document.getElementById('timezone');
+
+        // Load the saved timezone from localStorage or use the user's local timezone
+        const savedTimezone = localStorage.getItem('selected-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        timezoneSelect.value = savedTimezone;
+
+        // Save the selected timezone to localStorage and update the current time
+        timezoneSelect.addEventListener('change', function() {
+            const selectedTimezone = this.value;
+            localStorage.setItem('selected-timezone', selectedTimezone);
+            updateTime();
+        });
+
+        function updateTime() {
+            const timezone = localStorage.getItem('selected-timezone') || Intl.DateTimeFormat().resolvedOptions().timeZone;
+            const now = new Date().toLocaleString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: true });
+            const currentTimeElement = document.getElementById('current-time');
+            if (currentTimeElement) {
+                currentTimeElement.textContent = now;
+            }
+        }
+
+        updateTime();
+        setInterval(updateTime, 60000); // Update every minute
+
+        // Work hours and rest hours functionality
+        const workHoursInput = document.getElementById('work-hours');
+        const restHoursInput = document.getElementById('rest-hours');
+        const totalWorkHoursDisplay = document.getElementById('total-work-hours');
+        const settingsForm = document.querySelector('.bg-white form');
+        
+        // Calculate total work hours
+        function calculateTotalWorkHours() {
+            const workHours = parseFloat(workHoursInput.value) || 0;
+            const restHours = parseFloat(restHoursInput.value) || 0;
+            const totalHours = Math.max(0, workHours - restHours);
+            totalWorkHoursDisplay.textContent = totalHours.toFixed(1);
+        }
+        
+        // Load company settings
+        function loadCompanySettings() {
+            fetch('/api/company-settings/', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    workHoursInput.value = data.work_hours || '';
+                    restHoursInput.value = data.rest_hours || '';
+                    calculateTotalWorkHours();
+                } else {
+                    console.error('Failed to load company settings:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading company settings:', error);
+            });
+        }
+        
+        // Save company settings
+        settingsForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const workHours = parseFloat(workHoursInput.value) || 0;
+            const restHours = parseFloat(restHoursInput.value) || 0;
+            
+            fetch('/api/company-settings/update/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    work_hours: workHours,
+                    rest_hours: restHours
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Settings saved successfully.');
+                    calculateTotalWorkHours();
+                } else {
+                    showNotification(data.message || 'Failed to save settings.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('An unexpected error occurred.', 'error');
+            });
+        });
+        
+        // Update total hours when inputs change
+        workHoursInput.addEventListener('input', calculateTotalWorkHours);
+        restHoursInput.addEventListener('input', calculateTotalWorkHours);
+        
+        // Load settings when page loads
+        loadCompanySettings();
     });
 </script>

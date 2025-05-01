@@ -33,12 +33,13 @@
     <div id="context-menu" class="hidden absolute bg-white shadow-md rounded-lg p-2 z-50">
         <button id="add-note" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Add Note</button>
         <button id="mark-holiday" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mark as Holiday</button>
+        <button id="add-global-holiday" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Add Global Holiday</button>
         <button id="remove-holiday" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Remove Holiday</button>
         <button id="mark-weekend" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mark as Weekend</button>
     </div>
 
     <!-- Custom Modal -->
-    <div id="custom-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+    <div id="custom-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-lg p-6 w-96">
             <h3 id="modal-title" class="text-lg font-semibold text-gray-800 mb-4">Add Note</h3>
             <form id="modal-form">
@@ -73,22 +74,120 @@
             let holidays = {};
             let notes = {};
             let weekendDays = [];
+            let personalNotes = {}; // Added to store employee personal notes
+            let currentEmployeeId = null; // Track the currently selected employee
 
-            // Load calendar settings from backend
-            fetch('/api/calendar-settings/get/')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        holidays = data.holidays || {};
-                        notes = data.notes || {};
-                        weekendDays = (data.weekendDays || []).map(day => Number(day)); // Ensure numbers
+            // Function to load calendar settings for a specific employee or for admin
+            function loadCalendarSettings(employeeId = null) {
+                let url = '/api/calendar-settings/get/';
+                if (employeeId) {
+                    url = `/api/calendar-settings/get/?employee_id=${employeeId}`;
+                    currentEmployeeId = employeeId;
+                } else {
+                    currentEmployeeId = null;
+                }
+
+                // Reset all data
+                holidays = {};
+                notes = {};
+                weekendDays = [];
+                personalNotes = {};
+
+                // Check if "Select an employee" is selected
+                const employeeName = document.getElementById('employee-name');
+                const isNoEmployeeSelected = employeeName && (employeeName.textContent === 'Select an employee');
+                
+                if (isNoEmployeeSelected) {
+                    console.log('No employee selected, showing empty calendar with global settings only');
+                    
+                    // Load only global holidays and weekend settings
+                    fetch('/api/calendar-settings/get/')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Only take holidays and weekend days, ignore notes
+                                holidays = data.holidays || {};
+                                weekendDays = (data.weekendDays || []).map(day => Number(day)); // Ensure numbers
+                                
+                                console.log('Loaded global settings:', {
+                                    holidays,
+                                    weekendDays
+                                });
+                                
+                                renderCalendar(currentDisplayYear, currentDisplayMonth);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading global calendar settings:', error);
+                            renderCalendar(currentDisplayYear, currentDisplayMonth);
+                        });
+                    return;
+                }
+
+                // Load the admin or employee calendar settings
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            holidays = data.holidays || {};
+                            notes = data.notes || {};
+                            weekendDays = (data.weekendDays || []).map(day => Number(day)); // Ensure numbers
+                            
+                            // If we have an employee ID, also load their personal notes
+                            if (employeeId) {
+                                return fetch(`/api/personal-notes/get/?employee_id=${employeeId}`)
+                                    .then(response => response.json());
+                            }
+                        }
+                        return { success: false, notes: {} };
+                    })
+                    .then(personalData => {
+                        if (personalData && personalData.success) {
+                            personalNotes = personalData.notes || {};
+                            console.log('Loaded personal notes for employee:', currentEmployeeId, personalNotes);
+                        } else {
+                            console.log('No personal notes found or request failed');
+                        }
                         renderCalendar(currentDisplayYear, currentDisplayMonth);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading calendar settings:', error);
-                    renderCalendar(currentDisplayYear, currentDisplayMonth);
+                    })
+                    .catch(error => {
+                        console.error('Error loading calendar settings:', error);
+                        renderCalendar(currentDisplayYear, currentDisplayMonth);
+                    });
+            }
+
+            // Check if we're in the employee view (inside employeeview.html)
+            const isEmployeeView = document.getElementById('employee-view') !== null;
+
+            // Listen for employee changes if we're in the employee view
+            if (isEmployeeView) {
+                // This event will be triggered when an employee is selected in the dropdown
+                document.addEventListener('employeeSelected', function(e) {
+                    const employeeId = e.detail.employeeId;
+                    console.log('Calendar received employee change event:', employeeId);
+                    loadCalendarSettings(employeeId);
                 });
+                
+                // Listen for employee reset event (when "Choose Employee" is selected)
+                document.addEventListener('employeeReset', function() {
+                    console.log('Calendar received employee reset event');
+                    // Reset to showing only global settings
+                    loadCalendarSettings(null);
+                });
+
+                // Check if there's a saved employee ID in localStorage
+                const savedEmployeeId = localStorage.getItem('selectedEmployeeId');
+                if (savedEmployeeId) {
+                    console.log('Calendar loading saved employee:', savedEmployeeId);
+                    loadCalendarSettings(savedEmployeeId);
+                } else {
+                    // Default to admin settings if no employee selected
+                    loadCalendarSettings();
+                }
+            } else {
+                // If not in employee view, just load the admin's settings
+                loadCalendarSettings();
+            }
 
             document.addEventListener('click', function(e) {
                 if (!e.target.closest('#context-menu') && !e.target.closest('#custom-modal')) {
@@ -146,7 +245,12 @@
             }
 
             function saveCalendarSettings() {
-                fetch('/api/calendar-settings/update/', {
+                let url = '/api/calendar-settings/update/';
+                if (currentEmployeeId) {
+                    url = `/api/calendar-settings/update/?employee_id=${currentEmployeeId}`;
+                }
+
+                fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -268,12 +372,20 @@
                         dayCell.appendChild(holidayContent);
                     }
 
-                    // Add note if exists
+                    // Add admin note if exists
                     if (notes[dateString]) {
                         const noteContent = document.createElement('div');
                         noteContent.classList.add('text-xs', 'text-blue-500', 'mt-1');
                         noteContent.textContent = notes[dateString];
                         dayCell.appendChild(noteContent);
+                    }
+
+                    // Add employee's personal note if exists and we're in employee view
+                    if (currentEmployeeId && personalNotes[dateString]) {
+                        const personalNoteContent = document.createElement('div');
+                        personalNoteContent.classList.add('text-xs', 'text-green-500', 'mt-1');
+                        personalNoteContent.textContent = `Employee note: ${personalNotes[dateString]}`;
+                        dayCell.appendChild(personalNoteContent);
                     }
 
                     calendarGrid.appendChild(dayCell);
@@ -356,6 +468,49 @@
                 
                 saveCalendarSettings();
                 renderCalendar(currentDisplayYear, currentDisplayMonth);
+            });
+            
+            // Add Global Holiday handler
+            document.getElementById('add-global-holiday').addEventListener('click', function() {
+                hideContextMenu();
+                showModal('Global Holiday Reason', holidays[selectedDate] || '', function(reason) {
+                    if (reason.trim()) {
+                        // Save to global holidays endpoint
+                        fetch('/api/calendar-settings/update-global-holiday/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
+                            body: JSON.stringify({
+                                date: selectedDate,
+                                reason: reason
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Update local state
+                                holidays[selectedDate] = reason;
+                                renderCalendar(currentDisplayYear, currentDisplayMonth);
+                                
+                                // Show success notification if possible
+                                if (typeof showNotification === 'function') {
+                                    showNotification('Global holiday added successfully!');
+                                } else {
+                                    alert('Global holiday added successfully!');
+                                }
+                            } else {
+                                console.error('Error adding global holiday:', data.message);
+                                alert('Failed to add global holiday: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error adding global holiday:', error);
+                            alert('Failed to add global holiday. Please try again.');
+                        });
+                    }
+                });
             });
         });
     </script>

@@ -12,21 +12,35 @@ urlpatterns = [
     path("loginpunch", views.LoginPuch.as_view(), name="loginpunch"),
     path('logout/', views.LogoutView.as_view(), name='logout'),
     path('employee/calendar/', views.EmployeeCalendarView.as_view(), name='employee_calendar'),
-    path('calendar/', views.EmployeeCalendarView.as_view(), name='calendar'),  # Added new URL pattern
+    path('calendar/', views.EmployeeCalendarView.as_view(), name='calendar'), 
     path('add-employee/', views.AddEmployeeView.as_view(), name='add_employee'),
+    
     # API calender    
     path('api/calendar-settings/get/', views.GetCalendarSettingsView.as_view(), name='get_calendar_settings'),
     path('api/calendar-settings/update/', views.UpdateCalendarSettingsView.as_view(), name='update_calendar_settings'),
+    path('api/calendar-settings/update-global-holiday/', views.UpdateGlobalHolidayView.as_view(), name='update_global_holiday'),
     path('api/personal-notes/get/', views.GetPersonalNotesView.as_view(), name='get_personal_notes'),
+    path('api/personal-notes/update/', views.UpdatePersonalNotesView.as_view(), name='update_personal_notes'),
+    
+    # Company settings
+    path('update-company-name/', views.UpdateCompanyNameView.as_view(), name='update_company_name'),
+    path('api/company-settings/', views.GetCompanySettingsView.as_view(), name='get_company_settings'),
+    path('api/company-settings/update/', views.UpdateCompanySettingsView.as_view(), name='update_company_settings'),
+
+    # Profile picture endpoints
+    path('api/profile-picture/', views.ProfilePictureView.as_view(), name='profile_picture'),
+    path('api/profile-picture/get/', views.GetProfilePictureView.as_view(), name='get_profile_picture'),
 
     # Add new API endpoints for employees
     path('api/employees/get/', views.GetEmployeesView.as_view(), name='get_employees'),
     path('api/employees/<int:employee_id>/', views.GetEmployeeDetailsView.as_view(), name='get_employee_details'),
+    path('api/employees/<int:user_id>/delete/', views.delete_employee, name='delete_employee'),
 
     # Time tracking endpoints
     path('api/time/punch/', views.PunchTimeView.as_view(), name='punch_time'),
     path('api/time/stats/', views.GetTimeStatisticsView.as_view(), name='time_stats'),
     path('api/time/stats/<int:employee_id>/', views.GetTimeStatisticsView.as_view(), name='employee_time_stats'),
+    path('api/time/entries/<int:employee_id>/', views.GetEmployeeTimeEntriesView.as_view(), name='get_employee_time_entries'),
     path('api/time/recent/', views.GetRecentActivitiesView.as_view(), name='get_recent_activities'),
     
     # Today's time entries and approval endpoints
