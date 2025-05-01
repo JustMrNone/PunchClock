@@ -136,7 +136,7 @@ We welcome contributions to Punch Clock! Please see our [contributing guide](doc
 
 ## 📝 License
 
-Punch Clock is open source software licensed under the MIT License. See [LICENSE](LICENSE) for more information.
+Punch Clock is open source software licensed under the GNU General Public License v3.0 (GPL-3.0). See the [LICENSE](LICENSE) for more information.
 
 ## 🔮 Roadmap
 
