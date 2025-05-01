@@ -8,14 +8,14 @@
     <div class="flex items-center justify-between mb-6 bg-white rounded-xl p-6 shadow-md mt-8">
         <div class="flex items-center">
             <!-- Updated profile picture container with globe-like styling -->
-            <div id="profile-pic-container" class="w-16 h-16 rounded-full bg-gradient-to-b from-gray-100 to-gray-300 flex items-center justify-center text-gray-600 font-bold overflow-hidden relative border-2 border-white shadow-lg  bg-indigo-500" style="box-shadow: 0 6px 12px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+            <div id="profile-pic-container" class="w-16 h-16 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-gray-600 font-bold overflow-hidden relative border-2 border-white shadow-lg  bg-indigo-500" style="box-shadow: 0 6px 12px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">
                 <!-- User initials shown when no profile picture -->
                 <span id="user-initials" class="text-xl font-bold text-white">{{ request.user.first_name|slice:":1" }}{{ request.user.last_name|slice:":1" }}</span>
                 <!-- Profile image container -->
                 <img id="profile-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Profile Picture">
                 
                 <!-- Overlay for cropping feedback -->
-                <div id="profile-overlay" class="hidden absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div id="profile-overlay" class="hidden absolute inset-0 bg-black bg-opacity-50 items-center justify-center">
                     <div class="text-white text-xs text-center px-2">Drag to reposition</div>
                 </div>
             </div>
@@ -39,7 +39,7 @@
     </div>
 
     <!-- Image cropping modal -->
-    <div id="crop-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex items-center justify-center">
+    <div id="crop-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg mx-4">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Crop Your Image</h3>
@@ -61,7 +61,7 @@
     </div>
 
     <!-- Delete confirmation modal -->
-    <div id="delete-modal" class="hidden fixed inset-0 bg-opacity-75 z-50 flex items-center justify-center">
+    <div id="delete-modal" class="hidden fixed inset-0 bg-opacity-75 z-50items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Remove Profile Picture</h3>

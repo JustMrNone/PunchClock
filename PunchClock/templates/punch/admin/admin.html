@@ -1,7 +1,9 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<!-- Critical theme initialization -->
+
+{% block title %}WorkTime Tracker | Admin Panel{% endblock %}
+
+{% block extra_head %}
 <script>
   (function() {
     try {
@@ -14,46 +16,44 @@
     }
   })();
 </script>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WorkTime Tracker | Admin Panel</title>
-    <!-- Theme initialization script - Must be first -->
-    <script>
-        (function() {
-            try {
-                function setTheme(theme) {
-                    const html = document.documentElement;
-                    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    
-                    if (theme === 'system') {
-                        html.setAttribute('data-theme', systemDark ? 'dark' : 'light');
-                    } else {
-                        html.setAttribute('data-theme', theme);
-                    }
-                    localStorage.setItem('theme', theme);
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    (function() {
+        try {
+            function setTheme(theme) {
+                const html = document.documentElement;
+                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                
+                if (theme === 'system') {
+                    html.setAttribute('data-theme', systemDark ? 'dark' : 'light');
+                } else {
+                    html.setAttribute('data-theme', theme);
                 }
-
-                // Set theme immediately to prevent flash
-                const savedTheme = localStorage.getItem('theme') || 'system';
-                setTheme(savedTheme);
-
-                // Update on system changes
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                    const currentTheme = localStorage.getItem('theme') || 'system';
-                    if (currentTheme === 'system') {
-                        setTheme('system');
-                    }
-                });
-            } catch (e) {
-                console.error('Theme initialization failed:', e);
+                localStorage.setItem('theme', theme);
             }
-        })();
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="{% static 'punch/css/punch.css' %}">
-    <link rel="stylesheet" href="{% static 'punch/css/mypunch.css' %}">
-</head>
+
+            // Set theme immediately to prevent flash
+            const savedTheme = localStorage.getItem('theme') || 'system';
+            setTheme(savedTheme);
+
+            // Update on system changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                const currentTheme = localStorage.getItem('theme') || 'system';
+                if (currentTheme === 'system') {
+                    setTheme('system');
+                }
+            });
+        } catch (e) {
+            console.error('Theme initialization failed:', e);
+        }
+    })();
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="{% static 'punch/css/punch.css' %}">
+<link rel="stylesheet" href="{% static 'punch/css/mypunch.css' %}">
+{% endblock %}
+
+{% block content %}
 <body class="min-h-screen">
     <div class="flex">
         <!-- Sidebar -->
@@ -84,7 +84,7 @@
         </div>
     </div>
 
-    <script src={% static 'punch/js/punch.js' %}></script>
+    <script src="{% static 'punch/js/punch.js' %}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Tab switching functionality
@@ -143,4 +143,4 @@
         });
     </script>
 </body>
-</html>
+{% endblock %}

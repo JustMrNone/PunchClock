@@ -1,29 +1,30 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WorkTime Tracker | Welcome</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Poppins', sans-serif;
-            background-color: #f8fafc;
-        }
-        .welcome-btn {
-            transition: all 0.3s ease;
-            transform: scale(1);
-        }
-        .welcome-btn:hover {
-            transform: scale(1.05);
-        }
-        .welcome-btn:active {
-            transform: scale(0.98);
-        }
-    </style>
-</head>
+{% extends 'base.html' %}
+
+{% block title %}WorkTime Tracker | Welcome{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #f8fafc;
+    }
+    .welcome-btn {
+        transition: all 0.3s ease;
+        transform: scale(1);
+    }
+    .welcome-btn:hover {
+        transform: scale(1.05);
+    }
+    .welcome-btn:active {
+        transform: scale(0.98);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
 <body class="min-h-screen flex items-center justify-center bg-gray-100">
     <div class="bg-white rounded-xl shadow-md p-8 max-w-md w-full text-center">
         <h1 class="text-3xl font-bold text-gray-800 mb-4">Welcome to WorkTime Tracker</h1>
@@ -38,4 +39,4 @@
         </div>
     </div>
 </body>
-</html>
+{% endblock %}
