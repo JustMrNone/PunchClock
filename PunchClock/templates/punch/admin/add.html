@@ -327,32 +327,73 @@
                 
                 departments.forEach(dept => {
                     const deptItem = document.createElement('div');
-                    deptItem.className = 'bg-gray-50 p-4 rounded-lg border border-gray-200';
+                    deptItem.className = 'bg-gray-50 p-4 rounded-lg border border-gray-200 flex justify-between items-center';
                     deptItem.innerHTML = `
-                        <h5 class="font-medium text-gray-800">${dept.name}</h5>
-                        <p class="text-sm text-gray-500">${dept.employee_count || 0} employees</p>
+                        <div>
+                            <h5 class="font-medium text-gray-800">${dept.name}</h5>
+                            <p class="text-sm text-gray-500">${dept.employee_count || 0} employees</p>
+                        </div>
+                        <button onclick="showDepartmentDeleteConfirmation(${dept.id})" class="text-red-600 hover:text-red-800 focus:outline-none">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
                     `;
                     departmentList.appendChild(deptItem);
                 });
             }
         }
         
+        // Define a new function for department delete confirmation
+        function showDepartmentDeleteConfirmation(deptId) {
+            departmentToDeleteId = deptId;
+            
+            // Get department details for better messaging
+            fetch(`/api/departments/${deptId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.department) {
+                        const dept = data.department;
+                        
+                        // Check if department has employees
+                        if (dept.employee_count > 0) {
+                            const warningEl = document.getElementById('add-page-department-warning');
+                            if (warningEl) {
+                                warningEl.classList.remove('hidden');
+                            }
+                            confirmDeleteDepartment.disabled = true;
+                            confirmDeleteDepartment.classList.add('opacity-50', 'cursor-not-allowed');
+                        } else {
+                            const warningEl = document.getElementById('add-page-department-warning');
+                            if (warningEl) {
+                                warningEl.classList.add('hidden');
+                            }
+                            confirmDeleteDepartment.disabled = false;
+                            confirmDeleteDepartment.classList.remove('opacity-50', 'cursor-not-allowed');
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching department details:', error);
+                });
+            
+            // Show the modal
+            deleteDepartmentModal.classList.remove('hidden');
+        }
+
+        // Attach this function to the window object to make it accessible from HTML
+        window.showDepartmentDeleteConfirmation = showDepartmentDeleteConfirmation;
+
         // Add department name form submission
         document.getElementById('add-department-name-form').addEventListener('submit', function(e) {
             e.preventDefault();
-
+            
             const departmentName = document.getElementById('department-name').value.trim();
-
+            const departmentDescription = document.getElementById('department-description').value.trim();
+            
             if (!departmentName) {
-                // Show error with more prominence
                 showDeptToast('Department name is required', false);
-
-                // Add visual cue to the input field
                 const input = document.getElementById('department-name');
                 input.classList.add('border-red-500', 'bg-red-50');
                 input.focus();
-
-                // Shake the input field slightly for visual feedback
                 input.animate([
                     { transform: 'translateX(-5px)' },
                     { transform: 'translateX(5px)' },
@@ -363,17 +404,49 @@
                     duration: 300,
                     iterations: 1
                 });
-
                 return;
             }
-
-            // Remove error styling if it exists
-            const input = document.getElementById('department-name');
-            input.classList.remove('border-red-500', 'bg-red-50');
-
-            // Proceed to the next step
-            document.getElementById('add-department-name-form').classList.add('hidden');
-            document.getElementById('add-department-description-form').classList.remove('hidden');
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            // Show loading toast
+            showDeptToast('Creating department...', true);
+            
+            // Send request to create department
+            fetch('/api/departments/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    name: departmentName,
+                    description: departmentDescription
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showDeptToast('Department added successfully', true);
+                    
+                    // Clear form
+                    document.getElementById('department-name').value = '';
+                    document.getElementById('department-description').value = '';
+                    
+                    // Remove any error styling
+                    document.getElementById('department-name').classList.remove('border-red-500', 'bg-red-50');
+                    
+                    // Reload departments
+                    loadDepartments();
+                } else {
+                    throw new Error(data.message || 'Failed to add department');
+                }
+            })
+            .catch(error => {
+                console.error('Error adding department:', error);
+                showDeptToast(error.message || 'An error occurred while adding the department', false);
+            });
         });
         
         // Back to name form
