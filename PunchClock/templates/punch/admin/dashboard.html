@@ -6,7 +6,7 @@
         </div>
         <div class="flex items-center space-x-4">
             <div class="relative">
-                <input type="text" placeholder="Search employees..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <input type="text" id="employee-search" placeholder="Search employees..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
             </div>
             <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
@@ -495,12 +495,231 @@
             loadTodayTimeEntries();
             loadEmployeeStats();
             
+            // Set up employee search functionality
+            setupEmployeeSearch();
+            
             // Set up auto-refresh every minute
             setInterval(function() {
                 loadTodayTimeEntries();
                 loadEmployeeStats();
             }, 60000);
         });
+        
+        // Setup search functionality for employees
+        function setupEmployeeSearch() {
+            const searchInput = document.getElementById('employee-search');
+            let allEntries = []; // Store all time entries
+            let allEmployees = []; // Store all employees for checking existence
+            
+            // Load all employees for reference
+            fetch('/api/employees/get/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.employees) {
+                        allEmployees = data.employees;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading employees for search:', error);
+                });
+                
+            // Load initial entries
+            fetch('/api/time/today/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        allEntries = data.entries;
+                    }
+                });
+            
+            // Add search input event handler
+            searchInput.addEventListener('input', function() {
+                const searchTerm = this.value.toLowerCase().trim();
+                
+                if (!searchTerm) {
+                    // If search is cleared, just reload all entries
+                    loadTodayTimeEntries();
+                    return;
+                }
+                
+                // Get the time entries table and message row
+                const tableBody = document.getElementById('timeEntryTable');
+                const noEntriesRow = document.getElementById('noEntriesRow');
+                
+                // Clear existing rows except the noEntriesRow
+                Array.from(tableBody.children).forEach(child => {
+                    if (child.id !== 'noEntriesRow') {
+                        tableBody.removeChild(child);
+                    }
+                });
+                
+                // Filter entries by employee name that exactly matches the search term
+                // or has the search term as a complete word within the name
+                const matchedEntries = allEntries.filter(entry => {
+                    // Check for exact match of full name (case insensitive)
+                    if (entry.employee_name.toLowerCase() === searchTerm) {
+                        return true;
+                    }
+                    
+                    // Check if it's a complete word in the name
+                    const nameWords = entry.employee_name.toLowerCase().split(' ');
+                    return nameWords.includes(searchTerm);
+                });
+                
+                // Find if there's an employee match in the full employee list
+                const matchedEmployee = allEmployees.find(emp => {
+                    // Check for exact match of full name (case insensitive)
+                    if (emp.full_name.toLowerCase() === searchTerm) {
+                        return true;
+                    }
+                    
+                    // Check if it's a complete word/name in the employee name
+                    const nameWords = emp.full_name.toLowerCase().split(' ');
+                    return nameWords.includes(searchTerm);
+                });
+                
+                // Display entries or appropriate message
+                if (matchedEntries.length > 0) {
+                    // We found matching entries
+                    noEntriesRow.style.display = 'none';
+                    
+                    // Add the time entries to the table
+                    displayTimeEntries(matchedEntries);
+                } else if (matchedEmployee) {
+                    // Employee exists but no time entries today
+                    noEntriesRow.style.display = '';
+                    noEntriesRow.querySelector('td').innerHTML = 
+                        `<div class="flex items-center justify-center py-3">
+                            <div class="mr-2 text-yellow-500"><i class="fas fa-exclamation-circle"></i></div>
+                            <span>${matchedEmployee.full_name} has not submitted any time entries today.</span>
+                        </div>`;
+                } else {
+                    // Check if the search term is potentially a partial match
+                    const potentialMatches = allEmployees.filter(emp => 
+                        emp.full_name.toLowerCase().includes(searchTerm)
+                    );
+                    
+                    if (potentialMatches.length > 0) {
+                        // There are partial matches, suggest them
+                        noEntriesRow.style.display = '';
+                        const matchList = potentialMatches.map(emp => 
+                            `<span class="font-medium cursor-pointer hover:text-indigo-600" onclick="document.getElementById('employee-search').value='${emp.full_name}'; document.getElementById('employee-search').dispatchEvent(new Event('input'));">${emp.full_name}</span>`
+                        ).join(', ');
+                        
+                        noEntriesRow.querySelector('td').innerHTML = 
+                            `<div class="flex flex-col items-center justify-center py-3">
+                                <div class="flex items-center mb-2">
+                                    <div class="mr-2 text-blue-500"><i class="fas fa-info-circle"></i></div>
+                                    <span>No exact match found. Did you mean:</span>
+                                </div>
+                                <div>${matchList}</div>
+                            </div>`;
+                    } else {
+                        // No match at all
+                        noEntriesRow.style.display = '';
+                        noEntriesRow.querySelector('td').innerHTML = 
+                            `<div class="flex items-center justify-center py-3">
+                                <div class="mr-2 text-red-500"><i class="fas fa-times-circle"></i></div>
+                                <span>"${searchTerm}" is not a registered employee.</span>
+                            </div>`;
+                    }
+                }
+            });
+            
+            // Handle search on Enter key
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const searchTerm = this.value.toLowerCase().trim();
+                    
+                    // Refresh all entries first to get the latest data
+                    fetch('/api/time/today/')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                allEntries = data.entries;
+                                
+                                // Trigger search again with refreshed data
+                                this.dispatchEvent(new Event('input'));
+                            }
+                        });
+                }
+            });
+        }
+        
+        // Function to display time entries in the table
+        function displayTimeEntries(entries) {
+            const tableBody = document.getElementById('timeEntryTable');
+            
+            entries.forEach(entry => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50';
+                tr.dataset.entryId = entry.id;
+                
+                // Generate initials from name
+                const nameParts = entry.employee_name.split(' ');
+                const initials = nameParts.map(part => part[0]).join('').toUpperCase();
+                
+                // Generate random color for the avatar
+                const colors = ['indigo', 'purple', 'blue', 'green', 'red', 'yellow'];
+                const colorIndex = Math.floor(Math.random() * colors.length);
+                const color = colors[colorIndex];
+                
+                const statusClass = entry.status === 'approved' ? 
+                    'bg-green-100 text-green-800' : 
+                    entry.status === 'rejected' ? 
+                        'bg-red-100 text-red-800' : 
+                        'bg-yellow-100 text-yellow-800';
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                <div class="h-10 w-10 rounded-full bg-${color}-100 flex items-center justify-center text-${color}-600 font-bold">${initials}</div>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">${entry.employee_name}</div>
+                                <div class="text-sm text-gray-500">${entry.department || 'N/A'}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Today</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.start_time}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.end_time || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.total_hours.toFixed(2)} hours</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.timestamp || entry.created_at || 'N/A'}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                            ${entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        ${entry.status === 'pending' ?
+                            `<a href="#" class="approve-btn text-indigo-600 hover:text-indigo-900 mr-3" data-entry-id="${entry.id}">Approve</a>
+                            <a href="#" class="reject-btn text-red-600 hover:text-red-900" data-entry-id="${entry.id}">Reject</a>` :
+                            `<span class="text-gray-400">Already ${entry.status}</span>`
+                        }
+                    </td>
+                `;
+                
+                tableBody.appendChild(tr);
+            });
+            
+            // Add event listeners to approve/reject buttons
+            document.querySelectorAll('.approve-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    approveTimeEntry(this.dataset.entryId);
+                });
+            });
+            
+            document.querySelectorAll('.reject-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    rejectTimeEntry(this.dataset.entryId);
+                });
+            });
+        }
         
         // Function to load employee statistics
         function loadEmployeeStats() {
