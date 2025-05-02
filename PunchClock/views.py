@@ -88,7 +88,6 @@ class Welcome(View):
 
 class AdminLogin(View):
     def get(self, request):
-        # If user is already logged in and is staff, redirect them to the admin dashboard
         if request.user.is_authenticated and request.user.is_staff:
             return HttpResponseRedirect(reverse('PunchClock:dashboard'))
         return render(request, "punch/admin/adminlogin.html")
@@ -97,25 +96,35 @@ class AdminLogin(View):
         email_or_username = request.POST.get('email')
         password = request.POST.get('password')
 
-        # Try authenticating with email or username
+        # Try authenticating with email
         user = authenticate(request, username=email_or_username, password=password)
         if user is None:
             try:
+                # Try finding user by email if initial authentication failed
                 user_obj = User.objects.get(email=email_or_username)
                 user = authenticate(request, username=user_obj.username, password=password)
             except User.DoesNotExist:
                 pass
 
         if user is not None:
-            if user.is_staff:  # Ensure the user is an admin
+            # Check if there are any staff users
+            if not User.objects.filter(is_staff=True).exists():
+                # If no staff users exist, make this user staff
+                user.is_staff = True
+                user.save()
+            
+            # After potential promotion, check if user is staff
+            if user.is_staff:
                 login(request, user)
-                return HttpResponseRedirect(reverse('PunchClock:dashboard'))  # Redirect to admin dashboard
+                return HttpResponseRedirect(reverse('PunchClock:dashboard'))
             else:
-                # User exists but is not an admin
-                return render(request, "punch/admin/adminlogin.html", {"error": "You do not have admin privileges. Please log in as an employee instead."})
+                return render(request, "punch/admin/adminlogin.html", {
+                    "error": "You do not have admin privileges. Please log in as an employee instead."
+                })
         else:
-            # Invalid credentials
-            return render(request, "punch/admin/adminlogin.html", {"error": "Invalid email or password. Please try again."})
+            return render(request, "punch/admin/adminlogin.html", {
+                "error": "Invalid email or password. Please try again."
+            })
 
 class LoginPuch(View):
     def get(self, request):
@@ -1290,7 +1299,22 @@ class DepartmentCreateView(View):
     """View to create a new department"""
     def post(self, request):
         try:
+            print(f"[DEBUG] User attempting to create department: {request.user.username}")
+            print(f"[DEBUG] Is staff: {request.user.is_staff}")
+            print(f"[DEBUG] Total staff users: {User.objects.filter(is_staff=True).count()}")
+            print(f"[DEBUG] Request headers: {request.headers}")
+            print(f"[DEBUG] Request body: {request.body.decode()}")
+            
+            # If this is the first user in the system, make them staff
+            if User.objects.count() == 1:
+                print("[DEBUG] Only one user in system, promoting to staff")
+                request.user.is_staff = True
+                request.user.save()
+                request.user.refresh_from_db()
+                print(f"[DEBUG] User staff status after promotion: {request.user.is_staff}")
+            
             if not request.user.is_staff:
+                print(f"[DEBUG] Request denied - user is not staff")
                 return JsonResponse({
                     'success': False,
                     'message': 'Only administrators can create departments'
@@ -1299,6 +1323,7 @@ class DepartmentCreateView(View):
             data = json.loads(request.body)
             name = data.get('name')
             description = data.get('description', '')
+            print(f"[DEBUG] Creating department: {name}")
             
             if not name:
                 return JsonResponse({
@@ -1318,6 +1343,7 @@ class DepartmentCreateView(View):
                 name=name,
                 description=description
             )
+            print(f"[DEBUG] Department created successfully: {department.id}")
             
             return JsonResponse({
                 'success': True,
@@ -1328,7 +1354,14 @@ class DepartmentCreateView(View):
                     'employee_count': 0
                 }
             })
+        except json.JSONDecodeError as e:
+            print(f"[DEBUG] JSON decode error: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'Invalid JSON in request body'
+            }, status=400)
         except Exception as e:
+            print(f"[DEBUG] Error creating department: {str(e)}")
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 @method_decorator(login_required, name='dispatch')

@@ -74,10 +74,10 @@
         <h3 class="text-xl font-semibold text-gray-800 mb-4">Department Management</h3>
         
         <!-- Department Toast -->
-        <div id="dept-toast" class="mb-4 px-4 py-2 rounded hidden">
+        <div id="dept-toast" class="mb-4 px-4 py-3 rounded hidden transition-all duration-300 ease-in-out">
             <div class="flex justify-between items-center w-full">
-                <span id="dept-toast-message" class="flex-1"></span>
-                <button onclick="hideDeptToast()" class="ml-4">&times;</button>
+                <span id="dept-toast-message" class="flex-1 font-medium"></span>
+                <button onclick="hideDeptToast()" class="ml-4 text-current hover:opacity-75 transition-opacity">&times;</button>
             </div>
         </div>
         
@@ -85,26 +85,19 @@
             <!-- Add Department -->
             <div>
                 <h4 class="text-lg font-medium text-gray-700 mb-3">Add Department</h4>
-                <!-- Step 1: Department Name Form -->
-                <form id="add-department-name-form">
+                <form id="add-department-form">
+                    {% csrf_token %}
+                    <input type="hidden" id="add-department-id" value="">
                     <div class="mb-4">
-                        <label for="department-name" class="block text-sm font-medium text-gray-700">Department Name</label>
-                        <input type="text" id="department-name" name="department_name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter department name">
+                        <label for="add-department-name" class="block text-sm font-medium text-gray-700 mb-1">Department Name</label>
+                        <input type="text" id="add-department-name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" required>
                     </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Continue</button>
-                    </div>
-                </form>
-                
-                <!-- Step 2: Department Description Form (initially hidden) -->
-                <form id="add-department-description-form" class="hidden">
                     <div class="mb-4">
-                        <label for="department-description" class="block text-sm font-medium text-gray-700">Department Description (Optional)</label>
-                        <textarea id="department-description" name="department_description" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows="3" placeholder="Enter department description"></textarea>
+                        <label for="add-department-description" class="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+                        <textarea id="add-department-description" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows="3"></textarea>
                     </div>
-                    <div class="flex justify-end space-x-2">
-                        <button type="button" id="back-to-name" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Back</button>
-                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Add Department</button>
+                    <div class="flex justify-end space-x-3">
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Save</button>
                     </div>
                 </form>
             </div>
@@ -252,28 +245,55 @@
         
         function showDeptToast(message, isSuccess = true) {
             const toast = document.getElementById('dept-toast');
-            document.getElementById('dept-toast-message').textContent = message;
-            toast.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
-            toast.classList.add(isSuccess ? 'bg-green-100' : 'bg-red-100');
-            toast.classList.add(isSuccess ? 'text-green-800' : 'text-red-800');
-            toast.classList.add('border', isSuccess ? 'border-green-200' : 'border-red-200');
+            const toastMessage = document.getElementById('dept-toast-message');
             
-            // Make sure the toast is visible by forcing layout recalculation
-            toast.style.display = 'block';
-            // Force browser to recalculate layout to ensure visibility
-            void toast.offsetHeight;
+            // Clear any existing timers
+            if (window.deptToastTimer) {
+                clearTimeout(window.deptToastTimer);
+            }
             
+            // Reset classes and show toast
             toast.classList.remove('hidden');
+            toast.classList.remove('bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
             
-            // Increase the duration for error messages
-            const duration = isSuccess ? 3000 : 5000;
-            clearTimeout(window.deptToastTimer);
-            window.deptToastTimer = setTimeout(() => toast.classList.add('hidden'), duration);
+            // Apply appropriate styling
+            if (isSuccess) {
+                toast.classList.add('bg-green-100', 'text-green-800');
+            } else {
+                toast.classList.add('bg-red-100', 'text-red-800');
+            }
+            
+            toastMessage.textContent = message;
+            
+            // Only auto-hide success messages
+            if (isSuccess) {
+                window.deptToastTimer = setTimeout(hideDeptToast, 3000);
+            }
         }
 
         function hideDeptToast() {
-            document.getElementById('dept-toast').classList.add('hidden');
+            const toast = document.getElementById('dept-toast');
+            if (toast) {
+                // Add fade-out animation
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    toast.classList.add('hidden');
+                    toast.style.opacity = '1';
+                    // Clear any existing timers
+                    if (window.deptToastTimer) {
+                        clearTimeout(window.deptToastTimer);
+                        window.deptToastTimer = null;
+                    }
+                }, 200);
+            }
         }
+
+        // Ensure the close button event listener is properly attached
+        document.querySelector('#dept-toast button').addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            hideDeptToast();
+        });
 
         // Load departments for all department dropdowns
         function loadDepartments() {
@@ -382,166 +402,67 @@
         // Attach this function to the window object to make it accessible from HTML
         window.showDepartmentDeleteConfirmation = showDepartmentDeleteConfirmation;
 
-        // Add department name form submission
-        document.getElementById('add-department-name-form').addEventListener('submit', function(e) {
+        // Add department form submission
+        document.getElementById('add-department-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const departmentName = document.getElementById('department-name').value.trim();
-            const departmentDescription = document.getElementById('department-description').value.trim();
+            const departmentName = document.getElementById('add-department-name').value.trim();
+            const departmentDescription = document.getElementById('add-department-description').value.trim();
             
             if (!departmentName) {
                 showDeptToast('Department name is required', false);
-                const input = document.getElementById('department-name');
+                const input = document.getElementById('add-department-name');
                 input.classList.add('border-red-500', 'bg-red-50');
                 input.focus();
-                input.animate([
-                    { transform: 'translateX(-5px)' },
-                    { transform: 'translateX(5px)' },
-                    { transform: 'translateX(-5px)' },
-                    { transform: 'translateX(5px)' },
-                    { transform: 'translateX(0)' }
-                ], {
-                    duration: 300,
-                    iterations: 1
-                });
                 return;
             }
             
-            // Get CSRF token
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            
-            // Show loading toast
-            showDeptToast('Creating department...', true);
-            
-            // Send request to create department
-            fetch('/api/departments/create/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    name: departmentName,
-                    description: departmentDescription
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
+            try {
+                const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+                const response = await fetch('/api/departments/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        name: departmentName,
+                        description: departmentDescription
+                    }),
+                    credentials: 'same-origin'  // This ensures cookies are sent with the request
+                });
+                
+                const data = await response.json();
+                console.log('Department creation response:', {
+                    status: response.status,
+                    data: data
+                });
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to create department');
+                }
+                
                 if (data.success) {
                     showDeptToast('Department added successfully', true);
                     
                     // Clear form
-                    document.getElementById('department-name').value = '';
-                    document.getElementById('department-description').value = '';
+                    document.getElementById('add-department-name').value = '';
+                    document.getElementById('add-department-description').value = '';
                     
-                    // Remove any error styling
-                    document.getElementById('department-name').classList.remove('border-red-500', 'bg-red-50');
+                    // Clear any error styling
+                    document.getElementById('add-department-name').classList.remove('border-red-500', 'bg-red-50');
                     
-                    // Reload departments
+                    // Reload departments list
                     loadDepartments();
                 } else {
-                    throw new Error(data.message || 'Failed to add department');
+                    throw new Error(data.message || 'Failed to create department');
                 }
-            })
-            .catch(error => {
-                console.error('Error adding department:', error);
-                showDeptToast(error.message || 'An error occurred while adding the department', false);
-            });
-        });
-        
-        // Back to name form
-        document.getElementById('back-to-name').addEventListener('click', function() {
-            document.getElementById('add-department-description-form').classList.add('hidden');
-            document.getElementById('add-department-name-form').classList.remove('hidden');
-        });
-        
-        // Add department description form submission
-        document.getElementById('add-department-description-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            const departmentName = document.getElementById('department-name').value.trim();
-            const departmentDescription = document.getElementById('department-description').value.trim();
-            
-            if (!departmentName) {
-                // Show error with more prominence
-                showDeptToast('Department name is required', false);
-                
-                // Go back to the name form
-                document.getElementById('add-department-description-form').classList.add('hidden');
-                document.getElementById('add-department-name-form').classList.remove('hidden');
-                
-                // Add visual cue to the name input field
-                const input = document.getElementById('department-name');
-                input.classList.add('border-red-500', 'bg-red-50');
-                input.focus();
-                
-                // Shake the input field slightly for visual feedback
-                input.animate([
-                    { transform: 'translateX(-5px)' },
-                    { transform: 'translateX(5px)' },
-                    { transform: 'translateX(-5px)' },
-                    { transform: 'translateX(5px)' },
-                    { transform: 'translateX(0)' }
-                ], {
-                    duration: 300,
-                    iterations: 1
-                });
-                
-                return;
+            } catch (error) {
+                console.error('Error creating department:', error);
+                showDeptToast(error.message || 'An error occurred while creating the department', false);
             }
-            
-            // Show loading toast
-            showDeptToast('Creating department...', true);
-            
-            // Send request to create department
-            fetch('/api/departments/create/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({
-                    name: departmentName,
-                    description: departmentDescription
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    showDeptToast('Department added successfully', true);
-                    
-                    // Clear both forms
-                    document.getElementById('department-name').value = '';
-                    document.getElementById('department-description').value = '';
-                    
-                    // Reset forms
-                    document.getElementById('add-department-description-form').classList.add('hidden');
-                    document.getElementById('add-department-name-form').classList.remove('hidden');
-                    
-                    // Remove any error styling
-                    document.getElementById('department-name').classList.remove('border-red-500', 'bg-red-50');
-                    
-                    // Reload departments
-                    loadDepartments();
-                } else {
-                    throw new Error(data.message || 'Failed to add department');
-                }
-            })
-            .catch(error => {
-                console.error('Error adding department:', error);
-                showDeptToast(error.message || 'An error occurred while adding the department', false);
-                
-                // Go back to first step on error
-                document.getElementById('add-department-description-form').classList.add('hidden');
-                document.getElementById('add-department-name-form').classList.remove('hidden');
-            });
         });
-        
+
         // Remove department form submission
         document.getElementById('remove-department-form').addEventListener('submit', function(e) {
             e.preventDefault();

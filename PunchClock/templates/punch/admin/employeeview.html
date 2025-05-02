@@ -359,23 +359,19 @@
                 .then(function(data) {
                     if (data.success && data.employee) {
                         console.log("Employee details received:", data.employee);
-                        console.log("Department value:", data.employee.department);
                         
                         var emp = data.employee;
                         // Update the name display
                         document.getElementById('employee-name').textContent = emp.full_name;
                         
-                        // IMPORTANT: Force department display with exactly what we received
-                        const departmentElement = document.getElementById('employee-department');
-                        departmentElement.textContent = emp.department;
-                        console.log("Department element updated with:", emp.department);
-                        console.log("Department element now contains:", departmentElement.textContent);
+                        // Update department display
+                        const departmentText = emp.department && emp.department.name ? emp.department.name : '--';
+                        document.getElementById('dep').textContent = departmentText;
                         
                         document.getElementById('employee-initials').textContent = getInitials(emp.full_name);
                         
                         // Update the page title to include employee name
-                        document.querySelector('#employee-view h3.text-xl').textContent = emp.full_name;
-                        document.querySelector('#dep').textContent = departmentElement.textContent;
+                        document.querySelector('#employee-view h1.text-2xl').textContent = 'Employee Time Tracking';
                         
                         // Then fetch time statistics separately
                         return fetch('/api/time/stats/' + employeeId + '/');
@@ -432,16 +428,14 @@
 
         function resetEmployeeDisplay() {
             const nameElement = document.getElementById('employee-name');
-            const deptElement = document.getElementById('employee-department');
+            const depElement = document.getElementById('dep');
             const initialsElement = document.getElementById('employee-initials');
-            const titleElement = document.querySelector('#employee-view h3.text-xl');
             const weeklyHoursElement = document.getElementById('weekly-hours');
             const dailyAverageElement = document.getElementById('daily-average');
 
             if (nameElement) nameElement.textContent = 'Select an employee';
-            if (deptElement) deptElement.textContent = '--';
+            if (depElement) depElement.textContent = '--';
             if (initialsElement) initialsElement.textContent = '--';
-            if (titleElement) titleElement.textContent = 'Select an employee';
             if (weeklyHoursElement) weeklyHoursElement.textContent = '0 hours';
             if (dailyAverageElement) dailyAverageElement.textContent = '0 hours';
             

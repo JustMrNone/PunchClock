@@ -40,7 +40,7 @@
     </div>
 
     <!-- Image cropping modal -->
-    <div id="crop-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 items-center justify-center">
+    <div id="crop-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex items-center justify-center">
         <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg mx-4">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Crop Your Image</h3>
@@ -62,20 +62,39 @@
     </div>
 
     <!-- Delete confirmation modal -->
-    <div id="delete-modal" class="hidden fixed inset-0 bg-opacity-75 z-50items-center justify-center">
-        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+    <div id="delete-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex items-center justify-center transition-opacity duration-300 ease-in-out">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4 transform transition-all duration-200 ease-in-out scale-95 opacity-0" id="delete-modal-content">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Remove Profile Picture</h3>
-                <button id="close-delete-modal-btn" class="text-gray-500 hover:text-gray-700">
+                <button id="close-delete-modal-btn" class="text-gray-500 hover:text-gray-700 transition-colors">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="mb-6">
-                <p class="text-gray-700">Are you sure you want to remove your profile picture? This action cannot be undone.</p>
+                <div class="flex items-center mb-4">
+                    <div class="mr-4 flex-shrink-0">
+                        <!-- Preview of the image being deleted -->
+                        <div class="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
+                            <img id="delete-preview-image" class="w-full h-full object-cover" src="" alt="Profile Picture">
+                        </div>
+                    </div>
+                    <p class="text-gray-700">Are you sure you want to remove your profile picture? This action cannot be undone.</p>
+                </div>
+                <!-- Status message container -->
+                <div id="delete-status" class="hidden rounded-md p-3 mt-2"></div>
             </div>
             <div class="flex justify-end space-x-3">
-                <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
-                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Remove Picture</button>
+                <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors">Cancel</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    <span id="delete-btn-text">Remove Picture</span>
+                    <span id="delete-btn-loading" class="hidden">
+                        <svg class="animate-spin h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                    </span>
+                </button>
             </div>
         </div>
     </div>
@@ -130,21 +149,6 @@
         </form>
     </div>
 
-
-    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
-        <h3 class="text-xl font-semibold text-gray-800 mb-4">Theme Settings</h3>
-        <form>
-            <div class="mb-4">
-                <label for="theme-type" class="block text-sm font-medium text-gray-700">Select Theme</label>
-                <select id="theme-type" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="system">System Default</option>
-                    <option value="dark">Dark Mode</option>
-                    <option value="light">Light Mode</option>
-                </select>
-                <p class="mt-2 text-sm text-gray-500">Choose how you'd like the application to appear</p>
-            </div>
-        </form>
-    </div>
     
     <!-- Department Management Section -->
     <div class="bg-white rounded-xl p-6 shadow-md mt-8">
@@ -189,6 +193,24 @@
         </div>
     </div>
 
+    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Theme Settings</h3>
+        <form>
+            <div class="mb-4">
+                <label for="theme-type" class="block text-sm font-medium text-gray-700">Select Theme</label>
+                <select id="theme-type" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="system">System Default</option>
+                    <option value="dark">Dark Mode</option>
+                    <option value="light">Light Mode</option>
+                </select>
+                <p class="mt-2 text-sm text-gray-500">Choose how you'd like the application to appear</p>
+            </div>
+        </form>
+    </div>
+    <br></br>
+    <br></br>
+
+
     <!-- Department Delete Confirmation Modal -->
     <div id="delete-department-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
         <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
@@ -209,6 +231,7 @@
         </div>
     </div>
 </div>
+
 
 <!-- Add CropperJS library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
@@ -233,6 +256,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeDeleteModalBtn = document.getElementById('close-delete-modal-btn');
     const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
     const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+    const deletePreviewImage = document.getElementById('delete-preview-image');
+    const deleteStatus = document.getElementById('delete-status');
+    const deleteModalContent = document.getElementById('delete-modal-content');
+    const deleteBtnText = document.getElementById('delete-btn-text');
+    const deleteBtnLoading = document.getElementById('delete-btn-loading');
     
     let cropper;
     let currentImageUrl = null;
@@ -336,24 +364,65 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Handle remove button click - show the custom modal instead of alert
     removeBtn.addEventListener('click', function() {
+        deletePreviewImage.src = profileImage.src;
         deleteModal.classList.remove('hidden');
+        deleteModalContent.classList.remove('scale-95', 'opacity-0');
+        deleteModalContent.classList.add('scale-100', 'opacity-100');
     });
     
     // Close delete confirmation modal
-    closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
-    cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+    closeDeleteModalBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        // First animate the content out
+        deleteModalContent.classList.remove('scale-100', 'opacity-100');
+        deleteModalContent.classList.add('scale-95', 'opacity-0');
+        
+        // Wait for animation to complete before hiding the modal
+        setTimeout(() => {
+            deleteModal.classList.add('hidden');
+            // Reset any error messages
+            deleteStatus.classList.add('hidden');
+            deleteStatus.textContent = '';
+        }, 200); // 200ms matches the transition duration in the CSS
+    });
     
-    function closeDeleteModal() {
-        deleteModal.classList.add('hidden');
-    }
+    cancelDeleteBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        // First animate the content out
+        deleteModalContent.classList.remove('scale-100', 'opacity-100');
+        deleteModalContent.classList.add('scale-95', 'opacity-0');
+        
+        // Wait for animation to complete before hiding the modal
+        setTimeout(() => {
+            deleteModal.classList.add('hidden');
+            // Reset any error messages
+            deleteStatus.classList.add('hidden');
+            deleteStatus.textContent = '';
+        }, 200); // 200ms matches the transition duration in the CSS
+    });
+    
+    // Also handle clicking outside the modal to close it
+    deleteModal.addEventListener('click', function(e) {
+        if (e.target === deleteModal) {
+            // First animate the content out
+            deleteModalContent.classList.remove('scale-100', 'opacity-100');
+            deleteModalContent.classList.add('scale-95', 'opacity-0');
+            
+            // Wait for animation to complete before hiding the modal
+            setTimeout(() => {
+                deleteModal.classList.add('hidden');
+                // Reset any error messages
+                deleteStatus.classList.add('hidden');
+                deleteStatus.textContent = '';
+            }, 200); // 200ms matches the transition duration in the CSS
+        }
+    });
     
     // Handle confirm delete button
     confirmDeleteBtn.addEventListener('click', function() {
-        // Close the modal
-        closeDeleteModal();
-        
         // Show loading notification
-        showNotification('Removing profile picture...', 'info');
+        deleteBtnText.classList.add('hidden');
+        deleteBtnLoading.classList.remove('hidden');
         
         // Call server to remove the image
         fetch('/api/profile-picture/', {
@@ -365,6 +434,11 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Close the modal after successful deletion
+                deleteModal.classList.add('hidden');
+                deleteModalContent.classList.remove('scale-100', 'opacity-100');
+                deleteModalContent.classList.add('scale-95', 'opacity-0');
+                
                 // Update UI
                 userInitials.classList.remove('hidden');
                 profileImage.classList.add('hidden');
@@ -374,12 +448,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 showNotification('Profile picture removed successfully.');
             } else {
-                showNotification(data.message || 'Failed to remove profile picture.', false);
+                deleteStatus.classList.remove('hidden');
+                deleteStatus.textContent = data.message || 'Failed to remove profile picture.';
+                deleteStatus.classList.add('bg-red-100', 'text-red-800');
             }
         })
         .catch(error => {
             console.error('Error removing profile picture:', error);
-            showNotification('An error occurred while removing the profile picture.', false);
+            deleteStatus.classList.remove('hidden');
+            deleteStatus.textContent = 'An error occurred while removing the profile picture.';
+            deleteStatus.classList.add('bg-red-100', 'text-red-800');
+        })
+        .finally(() => {
+            deleteBtnText.classList.remove('hidden');
+            deleteBtnLoading.classList.add('hidden');
         });
     });
     
@@ -908,12 +990,12 @@ document.addEventListener('DOMContentLoaded', function() {
         deptElement.dataset.departmentId = department.id;
         
         deptElement.innerHTML = `
-            <div class="flex justify-between items-start">
+            <div class="flex justify-between items-center">
                 <div>
                     <h4 class="font-medium text-lg text-gray-800">${department.name}</h4>
                     <p class="text-gray-600 text-sm mt-1">${department.description || 'No description'}</p>
                 </div>
-                <div class="flex space-x-2">
+                <div class="flex items-center space-x-2">
                     <span class="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-medium rounded-full">
                         ${department.employee_count} employee${department.employee_count !== 1 ? 's' : ''}
                     </span>
