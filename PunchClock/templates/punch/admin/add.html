@@ -85,12 +85,25 @@
             <!-- Add Department -->
             <div>
                 <h4 class="text-lg font-medium text-gray-700 mb-3">Add Department</h4>
-                <form id="add-department-form">
+                <!-- Step 1: Department Name Form -->
+                <form id="add-department-name-form">
                     <div class="mb-4">
                         <label for="department-name" class="block text-sm font-medium text-gray-700">Department Name</label>
                         <input type="text" id="department-name" name="department_name" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter department name">
                     </div>
                     <div class="flex justify-end">
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Continue</button>
+                    </div>
+                </form>
+                
+                <!-- Step 2: Department Description Form (initially hidden) -->
+                <form id="add-department-description-form" class="hidden">
+                    <div class="mb-4">
+                        <label for="department-description" class="block text-sm font-medium text-gray-700">Department Description (Optional)</label>
+                        <textarea id="department-description" name="department_description" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" rows="3" placeholder="Enter department description"></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="back-to-name" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Back</button>
                         <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Add Department</button>
                     </div>
                 </form>
@@ -147,7 +160,81 @@
             </div>
         </form>
     </div>
+    
+    <!-- Delete Department Confirmation Modal -->
+    <div id="add-page-delete-department-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Delete Department</h3>
+                <button id="add-page-close-delete-department-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-6">
+                <p class="text-gray-700">Are you sure you want to delete this department? This action cannot be undone.</p>
+                <p id="add-page-department-warning" class="mt-3 text-sm text-red-600 hidden">This department has employees assigned to it. Please reassign them before deleting.</p>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="add-page-cancel-delete-department" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="add-page-confirm-delete-department" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Employee Confirmation Modal -->
+    <div id="add-page-delete-employee-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Delete Employee</h3>
+                <button id="add-page-close-delete-employee-modal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-6">
+                <p class="text-gray-700">Are you sure you want to delete this employee? This action cannot be undone.</p>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="add-page-cancel-delete-employee" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="add-page-confirm-delete-employee" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+            </div>
+        </div>
+    </div>
+    
     <script>
+        // Department modal elements and variables
+        const deleteDepartmentModal = document.getElementById('add-page-delete-department-modal');
+        const closeDeleteDepartmentModal = document.getElementById('add-page-close-delete-department-modal');
+        const cancelDeleteDepartment = document.getElementById('add-page-cancel-delete-department');
+        const confirmDeleteDepartment = document.getElementById('add-page-confirm-delete-department');
+        const departmentWarning = document.getElementById('add-page-department-warning');
+        
+        // Employee modal elements and variables  
+        const deleteEmployeeModal = document.getElementById('add-page-delete-employee-modal');
+        const closeDeleteEmployeeModal = document.getElementById('add-page-close-delete-employee-modal');
+        const cancelDeleteEmployee = document.getElementById('add-page-cancel-delete-employee');
+        const confirmDeleteEmployee = document.getElementById('add-page-confirm-delete-employee');
+        
+        let departmentToDeleteId = null;
+        let employeeToDeleteId = null;
+        
+        // Close department modal functions
+        closeDeleteDepartmentModal.addEventListener('click', closeDepartmentModal);
+        cancelDeleteDepartment.addEventListener('click', closeDepartmentModal);
+        
+        function closeDepartmentModal() {
+            deleteDepartmentModal.classList.add('hidden');
+            departmentToDeleteId = null;
+        }
+        
+        // Close employee modal functions
+        closeDeleteEmployeeModal.addEventListener('click', closeEmployeeModal);
+        cancelDeleteEmployee.addEventListener('click', closeEmployeeModal);
+        
+        function closeEmployeeModal() {
+            deleteEmployeeModal.classList.add('hidden');
+            employeeToDeleteId = null;
+        }
+
         function showToast(message, isSuccess = true) {
             const toast = document.getElementById('toast');
             document.getElementById('toast-message').textContent = message;
@@ -170,8 +257,18 @@
             toast.classList.add(isSuccess ? 'bg-green-100' : 'bg-red-100');
             toast.classList.add(isSuccess ? 'text-green-800' : 'text-red-800');
             toast.classList.add('border', isSuccess ? 'border-green-200' : 'border-red-200');
+            
+            // Make sure the toast is visible by forcing layout recalculation
+            toast.style.display = 'block';
+            // Force browser to recalculate layout to ensure visibility
+            void toast.offsetHeight;
+            
             toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.add('hidden'), 3000);
+            
+            // Increase the duration for error messages
+            const duration = isSuccess ? 3000 : 5000;
+            clearTimeout(window.deptToastTimer);
+            window.deptToastTimer = setTimeout(() => toast.classList.add('hidden'), duration);
         }
 
         function hideDeptToast() {
@@ -201,7 +298,7 @@
                             // Add department options
                             departments.forEach(dept => {
                                 const option = document.createElement('option');
-                                option.value = dept.name || dept.id; // Use name as value if id isn't available
+                                option.value = dept.id; // Use the department ID as value
                                 option.textContent = dept.name;
                                 dropdown.appendChild(option);
                             });
@@ -240,6 +337,180 @@
             }
         }
         
+        // Add department name form submission
+        document.getElementById('add-department-name-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const departmentName = document.getElementById('department-name').value.trim();
+
+            if (!departmentName) {
+                // Show error with more prominence
+                showDeptToast('Department name is required', false);
+
+                // Add visual cue to the input field
+                const input = document.getElementById('department-name');
+                input.classList.add('border-red-500', 'bg-red-50');
+                input.focus();
+
+                // Shake the input field slightly for visual feedback
+                input.animate([
+                    { transform: 'translateX(-5px)' },
+                    { transform: 'translateX(5px)' },
+                    { transform: 'translateX(-5px)' },
+                    { transform: 'translateX(5px)' },
+                    { transform: 'translateX(0)' }
+                ], {
+                    duration: 300,
+                    iterations: 1
+                });
+
+                return;
+            }
+
+            // Remove error styling if it exists
+            const input = document.getElementById('department-name');
+            input.classList.remove('border-red-500', 'bg-red-50');
+
+            // Proceed to the next step
+            document.getElementById('add-department-name-form').classList.add('hidden');
+            document.getElementById('add-department-description-form').classList.remove('hidden');
+        });
+        
+        // Back to name form
+        document.getElementById('back-to-name').addEventListener('click', function() {
+            document.getElementById('add-department-description-form').classList.add('hidden');
+            document.getElementById('add-department-name-form').classList.remove('hidden');
+        });
+        
+        // Add department description form submission
+        document.getElementById('add-department-description-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const departmentName = document.getElementById('department-name').value.trim();
+            const departmentDescription = document.getElementById('department-description').value.trim();
+            
+            if (!departmentName) {
+                // Show error with more prominence
+                showDeptToast('Department name is required', false);
+                
+                // Go back to the name form
+                document.getElementById('add-department-description-form').classList.add('hidden');
+                document.getElementById('add-department-name-form').classList.remove('hidden');
+                
+                // Add visual cue to the name input field
+                const input = document.getElementById('department-name');
+                input.classList.add('border-red-500', 'bg-red-50');
+                input.focus();
+                
+                // Shake the input field slightly for visual feedback
+                input.animate([
+                    { transform: 'translateX(-5px)' },
+                    { transform: 'translateX(5px)' },
+                    { transform: 'translateX(-5px)' },
+                    { transform: 'translateX(5px)' },
+                    { transform: 'translateX(0)' }
+                ], {
+                    duration: 300,
+                    iterations: 1
+                });
+                
+                return;
+            }
+            
+            // Show loading toast
+            showDeptToast('Creating department...', true);
+            
+            // Send request to create department
+            fetch('/api/departments/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    name: departmentName,
+                    description: departmentDescription
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showDeptToast('Department added successfully', true);
+                    
+                    // Clear both forms
+                    document.getElementById('department-name').value = '';
+                    document.getElementById('department-description').value = '';
+                    
+                    // Reset forms
+                    document.getElementById('add-department-description-form').classList.add('hidden');
+                    document.getElementById('add-department-name-form').classList.remove('hidden');
+                    
+                    // Remove any error styling
+                    document.getElementById('department-name').classList.remove('border-red-500', 'bg-red-50');
+                    
+                    // Reload departments
+                    loadDepartments();
+                } else {
+                    throw new Error(data.message || 'Failed to add department');
+                }
+            })
+            .catch(error => {
+                console.error('Error adding department:', error);
+                showDeptToast(error.message || 'An error occurred while adding the department', false);
+                
+                // Go back to first step on error
+                document.getElementById('add-department-description-form').classList.add('hidden');
+                document.getElementById('add-department-name-form').classList.remove('hidden');
+            });
+        });
+        
+        // Remove department form submission
+        document.getElementById('remove-department-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const departmentId = document.getElementById('remove-department-select').value;
+            
+            if (!departmentId) {
+                showDeptToast('Please select a department to remove', false);
+                return;
+            }
+            
+            departmentToDeleteId = departmentId;
+            deleteDepartmentModal.classList.remove('hidden');
+        });
+        
+        confirmDeleteDepartment.addEventListener('click', function() {
+            if (!departmentToDeleteId) return;
+            
+            fetch(`/api/departments/${departmentToDeleteId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showDeptToast('Department removed successfully', true);
+                    loadDepartments(); // Reload departments
+                } else {
+                    showDeptToast(data.message || 'Failed to remove department', false);
+                }
+                closeDepartmentModal();
+            })
+            .catch(error => {
+                console.error('Error removing department:', error);
+                showDeptToast('An error occurred while removing the department', false);
+                closeDepartmentModal();
+            });
+        });
+        
         // Handle department selection for employee removal
         document.getElementById('department-select').addEventListener('change', function() {
             const departmentId = this.value;
@@ -255,13 +526,24 @@
                 // Load employees for the selected department
                 fetch(`/api/departments/${departmentId}/employees/`)
                     .then(response => response.json())
-                    .then(employees => {
-                        employees.forEach(employee => {
-                            const option = document.createElement('option');
-                            option.value = employee.id;
-                            option.textContent = employee.name;
-                            employeeSelect.appendChild(option);
-                        });
+                    .then(data => {
+                        if (data.success && data.employees) {
+                            data.employees.forEach(employee => {
+                                const option = document.createElement('option');
+                                option.value = employee.id;
+                                option.textContent = employee.name;
+                                employeeSelect.appendChild(option);
+                            });
+                            
+                            if (data.employees.length === 0) {
+                                const option = document.createElement('option');
+                                option.value = "";
+                                option.textContent = "No employees in this department";
+                                employeeSelect.appendChild(option);
+                            }
+                        } else {
+                            showToast('Failed to load employees.', false);
+                        }
                     })
                     .catch(error => {
                         console.error('Error loading employees:', error);
@@ -282,39 +564,46 @@
             
             if (!employeeId) return;
             
-            if (confirm('Are you sure you want to delete this employee? This action cannot be undone.')) {
-                fetch(`/api/employees/${employeeId}/delete/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to delete employee');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    showToast('Employee deleted successfully', true);
-                    
-                    // Reset selection
-                    document.getElementById('employee-select').innerHTML = '<option value="">-- Select Employee --</option>';
-                    document.getElementById('employee-select').disabled = true;
-                    document.getElementById('delete-employee-btn').disabled = true;
-                    
-                    // Refresh employee list
-                    const departmentId = document.getElementById('department-select').value;
-                    if (departmentId) {
-                        // Trigger the change event to reload employees
-                        document.getElementById('department-select').dispatchEvent(new Event('change'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showToast('Failed to delete employee. Please try again.', false);
-                });
-            }
+            employeeToDeleteId = employeeId;
+            deleteEmployeeModal.classList.remove('hidden');
+        });
+        
+        confirmDeleteEmployee.addEventListener('click', function() {
+            if (!employeeToDeleteId) return;
+            
+            fetch(`/api/employees/${employeeToDeleteId}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete employee');
+                }
+                return response.json();
+            })
+            .then(data => {
+                showToast('Employee deleted successfully', true);
+                
+                // Reset selection
+                document.getElementById('employee-select').innerHTML = '<option value="">-- Select Employee --</option>';
+                document.getElementById('employee-select').disabled = true;
+                document.getElementById('delete-employee-btn').disabled = true;
+                
+                // Refresh employee list
+                const departmentId = document.getElementById('department-select').value;
+                if (departmentId) {
+                    // Trigger the change event to reload employees
+                    document.getElementById('department-select').dispatchEvent(new Event('change'));
+                }
+                closeEmployeeModal();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Failed to delete employee. Please try again.', false);
+                closeEmployeeModal();
+            });
         });
         
         // Load departments when the page loads

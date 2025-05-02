@@ -6,6 +6,13 @@
         </div>
         <div class="flex items-center space-x-4">
             <div class="relative">
+                <select id="department-filter" class="pl-10 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-64">
+                    <option value="">All Departments</option>
+                    <!-- Departments will be loaded here -->
+                </select>
+                <i class="fas fa-filter absolute left-3 top-3.5 text-gray-400"></i>
+            </div>
+            <div class="relative">
                 <input type="text" id="team-employee-search" placeholder="Search employees..." class="pl-10 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-96">
                 <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
             </div>
@@ -77,7 +84,7 @@
         </div>
 
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
+            <table id="employee-table" class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
@@ -219,3 +226,114 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load departments for the filter dropdown
+        loadDepartments();
+
+        // Add event listener for department filter
+        document.getElementById('department-filter').addEventListener('change', function() {
+            filterEmployeesByDepartment(this.value);
+        });
+
+        // Add event listener for employee search
+        document.getElementById('team-employee-search').addEventListener('input', function() {
+            searchEmployees(this.value);
+        });
+    });
+
+    // Function to load departments into the filter dropdown
+    function loadDepartments() {
+        fetch('/api/departments/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.departments) {
+                    const departmentFilter = document.getElementById('department-filter');
+                    
+                    // Clear existing options except the first one (All Departments)
+                    while (departmentFilter.options.length > 1) {
+                        departmentFilter.remove(1);
+                    }
+                    
+                    // Add department options
+                    data.departments.forEach(dept => {
+                        const option = document.createElement('option');
+                        option.value = dept.id;
+                        option.textContent = dept.name;
+                        departmentFilter.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading departments:', error);
+            });
+    }
+
+    // Function to filter employees by department
+    function filterEmployeesByDepartment(departmentId) {
+        // Get all rows in the employee table
+        const rows = document.querySelectorAll('#employee-table tbody tr');
+        
+        if (!departmentId) {
+            // If no department selected, show all employees
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+            return;
+        }
+        
+        // Filter rows based on department
+        rows.forEach(row => {
+            const employeeDept = row.querySelector('td:nth-child(2)').textContent.trim();
+            const deptOption = document.querySelector(`#department-filter option[value="${departmentId}"]`);
+            const deptName = deptOption ? deptOption.textContent : '';
+            
+            if (deptName && employeeDept === deptName) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Function to search employees
+    function searchEmployees(searchTerm) {
+        if (!searchTerm) {
+            // If search is cleared, reset to department filter only
+            filterEmployeesByDepartment(document.getElementById('department-filter').value);
+            return;
+        }
+        
+        searchTerm = searchTerm.toLowerCase();
+        
+        // Get all rows in the employee table
+        const rows = document.querySelectorAll('#employee-table tbody tr');
+        
+        // Filter rows based on employee name or email
+        rows.forEach(row => {
+            const employeeName = row.querySelector('td:first-child .text-sm.font-medium').textContent.toLowerCase();
+            const employeeEmail = row.querySelector('td:first-child .text-sm.text-gray-500').textContent.toLowerCase();
+            const departmentFilter = document.getElementById('department-filter').value;
+            
+            // Check if row matches the search term
+            const matchesSearch = employeeName.includes(searchTerm) || employeeEmail.includes(searchTerm);
+            
+            // Check if row matches the department filter (if active)
+            let matchesDept = true;
+            if (departmentFilter) {
+                const employeeDept = row.querySelector('td:nth-child(2)').textContent.trim();
+                const deptOption = document.querySelector(`#department-filter option[value="${departmentFilter}"]`);
+                const deptName = deptOption ? deptOption.textContent : '';
+                matchesDept = (deptName && employeeDept === deptName);
+            }
+            
+            // Show row only if it matches both search and department filter
+            if (matchesSearch && matchesDept) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+</script>

@@ -36,7 +36,6 @@ urlpatterns = [
     path('api/employees/get/', views.GetEmployeesView.as_view(), name='get_employees'),
     path('api/employees/<int:employee_id>/', views.GetEmployeeDetailsView.as_view(), name='get_employee_details'),
 
-
     # Time tracking endpoints
     path('api/time/punch/', views.PunchTimeView.as_view(), name='punch_time'),
     path('api/time/stats/', views.GetTimeStatisticsView.as_view(), name='time_stats'),
@@ -58,4 +57,11 @@ urlpatterns = [
     
     # Active employees endpoint (those who sent approval in last 24 hours)
     path('api/time/active-employees/', views.GetActiveEmployeesView.as_view(), name='get_active_employees'),
+
+    # Department management APIs
+    path('api/departments/', views.DepartmentListView.as_view(), name='list_departments'),
+    path('api/departments/create/', views.DepartmentCreateView.as_view(), name='create_department'),
+    path('api/departments/<int:department_id>/update/', views.DepartmentUpdateView.as_view(), name='update_department'),
+    path('api/departments/<int:department_id>/delete/', views.DepartmentDeleteView.as_view(), name='delete_department'),
+    path('api/departments/<int:department_id>/employees/', views.DepartmentEmployeesView.as_view(), name='department_employees'),
 ]

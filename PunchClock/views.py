@@ -10,7 +10,7 @@ from django.utils.decorators import method_decorator
 from django.utils import timezone
 import json
 from datetime import datetime, time, timedelta
-from .models import CalendarSettings, PersonalNote, CompanySettings, TimeEntry, Employee, ProfilePicture
+from .models import CalendarSettings, PersonalNote, CompanySettings, TimeEntry, Employee, ProfilePicture, Department
 # Import additional libraries for image handling
 from PIL import Image
 import io
@@ -18,6 +18,7 @@ import base64
 import os
 import re
 from django.core.files.base import ContentFile
+from django.db.models import Count
 
 # Create your views here.
 
@@ -142,7 +143,7 @@ class AddEmployeeView(View):
         email = request.POST.get('employee_email')
         password = request.POST.get('employee_password')
         role = request.POST.get('employee_role')
-        department = request.POST.get('employee_department')
+        department_id = request.POST.get('employee_department')
         hire_date = request.POST.get('employee_hire_date')
 
         if not all([full_name, email, password, role, hire_date]):
@@ -152,6 +153,17 @@ class AddEmployeeView(View):
             }, status=400)
 
         try:
+            # Get department if provided
+            department = None
+            if department_id:
+                try:
+                    department = Department.objects.get(id=department_id)
+                except Department.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': 'Selected department does not exist.'
+                    }, status=400)
+            
             # Create the user account
             user = User.objects.create_user(username=email, email=email, password=password)
             user.first_name = full_name.split(' ')[0]
@@ -161,11 +173,10 @@ class AddEmployeeView(View):
             
             # Create the employee record linked to the admin user
             if role != 'manager':
-                from .models import Employee
                 Employee.objects.create(
                     user=user,
                     admin=request.user,
-                    department=department or "",
+                    department=department,
                     hire_date=hire_date
                 )
             
@@ -403,16 +414,15 @@ class UpdateCompanySettingsView(View):
 class GetEmployeesView(View):
     def get(self, request):
         try:
-            from .models import Employee
             # Get all employees managed by this admin
-            employees = Employee.objects.filter(admin=request.user).select_related('user')
+            employees = Employee.objects.filter(admin=request.user).select_related('user', 'department')
             
             employees_data = [{
                 'id': employee.id,
                 'user_id': employee.user.id,
-                'full_name': employee.full_name,  # Changed from 'name' to 'full_name'
+                'full_name': employee.full_name,
                 'email': employee.user.email,
-                'department': employee.department
+                'department': employee.department.name if employee.department else 'N/A'
             } for employee in employees]
             
             return JsonResponse({
@@ -429,61 +439,25 @@ class GetEmployeesView(View):
 class GetEmployeeDetailsView(View):
     def get(self, request, employee_id):
         try:
-            from .models import Employee, TimeEntry
-            # Get the specific employee managed by this admin
-            employee = Employee.objects.select_related('user').get(id=employee_id)
+            # Get the specific employee managed by this admin with department info
+            employee = Employee.objects.select_related('user', 'department').get(id=employee_id)
             
-            # Make sure we get the department, even if it's empty
-            department = employee.department if employee.department else '--'
+            # Get department data
+            if employee.department:
+                department_data = {
+                    'id': employee.department.id,
+                    'name': employee.department.name
+                }
+            else:
+                department_data = 'N/A'
             
-            # Get employee statistics with detailed debugging
-            weekly_hours = 0
-            daily_average = 0
-            
-            try:
-                print(f"DEBUG - Calculating statistics for employee ID: {employee_id}, Name: {employee.full_name}")
-                
-                # Debug: Check for time entries
-                today = timezone.now().date()
-                week_start = today - timedelta(days=today.weekday())
-                week_end = week_start + timedelta(days=6)
-                
-                entries_count = TimeEntry.objects.filter(employee=employee).count()
-                week_entries_count = TimeEntry.objects.filter(
-                    employee=employee, 
-                    date__range=[week_start, week_end]
-                ).count()
-                
-                print(f"DEBUG - Total time entries found: {entries_count}")
-                print(f"DEBUG - Time entries this week ({week_start} to {week_end}): {week_entries_count}")
-                
-                if week_entries_count > 0:
-                    # List the entries for debugging
-                    week_entries = TimeEntry.objects.filter(
-                        employee=employee,
-                        date__range=[week_start, week_end]
-                    )
-                    for entry in week_entries:
-                        print(f"DEBUG - Entry: Date={entry.date}, Start={entry.start_time}, End={entry.end_time}, Hours={entry.total_hours}")
-                
-                # Get time statistics
-                weekly_hours = TimeEntry.get_weekly_hours(employee)
-                daily_average = TimeEntry.get_daily_average(employee)
-                
-                print(f"DEBUG - Calculated weekly_hours: {weekly_hours}")
-                print(f"DEBUG - Calculated daily_average: {daily_average}")
-                
-            except Exception as stats_error:
-                print(f"ERROR - Getting time statistics: {stats_error}")
-                import traceback
-                traceback.print_exc()
+            # Get employee statistics
+            weekly_hours = TimeEntry.get_weekly_hours(employee)
+            daily_average = TimeEntry.get_daily_average(employee)
             
             # Format statistics (round to 1 decimal place)
             weekly_hours_formatted = round(float(weekly_hours), 1) if weekly_hours is not None else 0
             daily_average_formatted = round(float(daily_average), 1) if daily_average is not None else 0
-            
-            # Debug print to check what we're sending
-            print(f"Sending employee data - Name: {employee.full_name}, Department: {department}, Weekly Hours: {weekly_hours_formatted}, Daily Average: {daily_average_formatted}")
             
             return JsonResponse({
                 'success': True,
@@ -492,21 +466,17 @@ class GetEmployeeDetailsView(View):
                     'user_id': employee.user.id,
                     'full_name': employee.full_name,
                     'email': employee.user.email,
-                    'department': department,
+                    'department': department_data,
                     'weekly_hours': weekly_hours_formatted,
                     'daily_average': daily_average_formatted
                 }
             })
         except Employee.DoesNotExist:
-            print(f"ERROR - Employee not found: {employee_id}")
             return JsonResponse({
                 'success': False,
                 'message': 'Employee not found'
             }, status=404)
         except Exception as e:
-            print(f"ERROR - Unexpected error getting employee details: {e}")
-            import traceback
-            traceback.print_exc()
             return JsonResponse({
                 'success': False,
                 'message': str(e)
@@ -667,23 +637,29 @@ class GetTodayTimeEntriesView(View):
                     admin_employee = Employee.objects.get(user=request.user)
                 except Employee.DoesNotExist:
                     # Create employee record for admin
+                    department = None
+                    try:
+                        department = Department.objects.get(name="Management")
+                    except Department.DoesNotExist:
+                        department = Department.objects.create(name="Management")
+                    
                     admin_employee = Employee.objects.create(
                         user=request.user,
-                        admin=request.user,  # Admin is their own admin
-                        department="Management",
+                        admin=request.user,
+                        department=department,
                         hire_date=timezone.now().date()
                     )
                 
                 # Get entries for both managed employees and admin's own entries
                 employees = list(Employee.objects.filter(admin=request.user))
-                # Include admin's own employee recordb
+                # Include admin's own employee record
                 if admin_employee not in employees:
                     employees.append(admin_employee)
                     
                 time_entries = TimeEntry.objects.filter(
                     employee__in=employees,
                     date=today
-                ).select_related('employee')
+                ).select_related('employee', 'employee__department')
             else:
                 # For regular employees
                 try:
@@ -693,22 +669,23 @@ class GetTodayTimeEntriesView(View):
                     employee = Employee.objects.create(
                         user=request.user,
                         admin=admin_user,
-                        department="",
+                        department=None,
                         hire_date=timezone.now().date()
                     )
                 
                 time_entries = TimeEntry.objects.filter(
                     employee=employee,
                     date=today
-                )
+                ).select_related('employee', 'employee__department')
             
             entries_data = []
             for entry in time_entries:
+                department_name = entry.employee.department.name if entry.employee.department else 'N/A'
                 entries_data.append({
                     'id': entry.id,
                     'employee_id': entry.employee.id,
                     'employee_name': entry.employee.full_name,
-                    'department': entry.employee.department,
+                    'department': department_name,
                     'date': entry.date.strftime('%Y-%m-%d'),
                     'start_time': entry.start_time.strftime('%I:%M %p'),
                     'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
@@ -723,6 +700,9 @@ class GetTodayTimeEntriesView(View):
                 'entries': entries_data
             })
         except Exception as e:
+            print(f"Error in GetTodayTimeEntriesView: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 @method_decorator(login_required, name='dispatch')
@@ -1272,4 +1252,210 @@ class GetProfilePictureView(View):
             print(f"Error fetching profile picture: {e}")
             import traceback
             traceback.print_exc()
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class DepartmentListView(View):
+    """View to list all departments"""
+    def get(self, request):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can view departments'
+                }, status=403)
+            
+            departments = Department.objects.all()
+            
+            # Get employee count for each department
+            department_data = []
+            for dept in departments:
+                employee_count = Employee.objects.filter(department=dept).count()
+                department_data.append({
+                    'id': dept.id,
+                    'name': dept.name,
+                    'description': dept.description or '',
+                    'employee_count': employee_count
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'departments': department_data
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class DepartmentCreateView(View):
+    """View to create a new department"""
+    def post(self, request):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can create departments'
+                }, status=403)
+            
+            data = json.loads(request.body)
+            name = data.get('name')
+            description = data.get('description', '')
+            
+            if not name:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Department name is required'
+                }, status=400)
+            
+            # Check if department already exists
+            if Department.objects.filter(name=name).exists():
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Department with this name already exists'
+                }, status=400)
+            
+            # Create department
+            department = Department.objects.create(
+                name=name,
+                description=description
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'department': {
+                    'id': department.id,
+                    'name': department.name,
+                    'description': department.description or '',
+                    'employee_count': 0
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class DepartmentUpdateView(View):
+    """View to update a department"""
+    def post(self, request, department_id):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can update departments'
+                }, status=403)
+            
+            try:
+                department = Department.objects.get(id=department_id)
+            except Department.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Department not found'
+                }, status=404)
+            
+            data = json.loads(request.body)
+            name = data.get('name')
+            description = data.get('description')
+            
+            if name is not None:
+                # Check if another department with this name exists
+                if Department.objects.exclude(id=department_id).filter(name=name).exists():
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Another department with this name already exists'
+                    }, status=400)
+                department.name = name
+            
+            if description is not None:
+                department.description = description
+            
+            department.save()
+            
+            employee_count = Employee.objects.filter(department=department).count()
+            
+            return JsonResponse({
+                'success': True,
+                'department': {
+                    'id': department.id,
+                    'name': department.name,
+                    'description': department.description or '',
+                    'employee_count': employee_count
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class DepartmentDeleteView(View):
+    """View to delete a department"""
+    def post(self, request, department_id):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can delete departments'
+                }, status=403)
+            
+            try:
+                department = Department.objects.get(id=department_id)
+            except Department.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Department not found'
+                }, status=404)
+            
+            # Check if there are employees in this department
+            employee_count = Employee.objects.filter(department=department).count()
+            if employee_count > 0:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Cannot delete department with {employee_count} employees. Please reassign employees first.'
+                }, status=400)
+            
+            department.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Department deleted successfully'
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class DepartmentEmployeesView(View):
+    """View to get all employees in a department"""
+    def get(self, request, department_id):
+        try:
+            if not request.user.is_staff:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Only administrators can view department employees'
+                }, status=403)
+            
+            try:
+                department = Department.objects.get(id=department_id)
+            except Department.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Department not found'
+                }, status=404)
+            
+            employees = Employee.objects.filter(department=department, admin=request.user)
+            employee_data = []
+            
+            for emp in employees:
+                employee_data.append({
+                    'id': emp.id,
+                    'name': emp.full_name,
+                    'email': emp.user.email,
+                    'hire_date': emp.hire_date.strftime('%Y-%m-%d') if emp.hire_date else None
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'department': {
+                    'id': department.id,
+                    'name': department.name,
+                    'description': department.description or '',
+                },
+                'employees': employee_data
+            })
+        except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)

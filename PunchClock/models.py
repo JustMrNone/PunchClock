@@ -9,6 +9,19 @@ class CalendarSettings(models.Model):
     notes = models.JSONField(default=dict)
     weekend_days = models.JSONField(default=list)
 
+# New Department model for better organization
+class Department(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.name
+        
+    class Meta:
+        ordering = ['name']
+
 class TimeEntry(models.Model):
     employee = models.ForeignKey('Employee', on_delete=models.CASCADE, related_name='time_entries')
     date = models.DateField()
@@ -92,7 +105,7 @@ class CompanySettings(models.Model):
 class Employee(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     admin = models.ForeignKey(User, on_delete=models.CASCADE, related_name='employees')
-    department = models.CharField(max_length=100, blank=True, default="")
+    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
     hire_date = models.DateField(default='2025-01-01')  # Added default value for existing records
     
     @property
