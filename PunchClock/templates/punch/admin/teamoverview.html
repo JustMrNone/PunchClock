@@ -26,45 +26,11 @@
             <button class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View All</button>
         </div>
 
-        <div class="space-y-4">
-            <div>
-                <div class="flex justify-between mb-1">
-                    <span class="text-sm font-medium text-gray-700">Engineering</span>
-                    <span class="text-sm font-medium text-gray-700">124.5h</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-indigo-600 h-2.5 rounded-full" style="width: 45%"></div>
-                </div>
-            </div>
-
-            <div>
-                <div class="flex justify-between mb-1">
-                    <span class="text-sm font-medium text-gray-700">Marketing</span>
-                    <span class="text-sm font-medium text-gray-700">87.0h</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-green-500 h-2.5 rounded-full" style="width: 32%"></div>
-                </div>
-            </div>
-
-            <div>
-                <div class="flex justify-between mb-1">
-                    <span class="text-sm font-medium text-gray-700">Sales</span>
-                    <span class="text-sm font-medium text-gray-700">76.5h</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-yellow-500 h-2.5 rounded-full" style="width: 28%"></div>
-                </div>
-            </div>
-
-            <div>
-                <div class="flex justify-between mb-1">
-                    <span class="text-sm font-medium text-gray-700">Operations</span>
-                    <span class="text-sm font-medium text-gray-700">54.5h</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div class="bg-purple-500 h-2.5 rounded-full" style="width: 20%"></div>
-                </div>
+        <div id="department-stats-container" class="space-y-4">
+            <!-- Department stats will be populated dynamically here -->
+            <div class="flex items-center justify-center py-4 text-gray-500">
+                <i class="fas fa-spinner fa-spin mr-2"></i>
+                Loading department statistics...
             </div>
         </div>
     </div>
@@ -74,11 +40,11 @@
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-semibold text-gray-800">Employee Hours</h3>
             <div class="flex space-x-2">
-                <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
-                    <i class="fas fa-filter text-gray-600"></i>
-                </button>
-                <button class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+                <button id="sort-by-hours" class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
                     <i class="fas fa-sort text-gray-600"></i>
+                </button>
+                <button id="export-employee-hours" class="p-2 bg-gray-100 rounded-lg hover:bg-gray-200">
+                    <i class="fas fa-download text-gray-600"></i>
                 </button>
             </div>
         </div>
@@ -96,104 +62,9 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <div class="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">JD</div>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">John Doe</div>
-                                    <div class="text-sm text-gray-500">johndoe@example.com</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Engineering</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">42.5</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">38.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">4.5</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Complete</span>
-                        </td>
-                    </tr>
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">AS</div>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">Alice Smith</div>
-                                    <div class="text-sm text-gray-500">alice@example.com</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Marketing</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">40.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">40.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">0.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Complete</span>
-                        </td>
-                    </tr>
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">MJ</div>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">Michael Johnson</div>
-                                    <div class="text-sm text-gray-500">michael@example.com</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Sales</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">38.5</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">35.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">3.5</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                        </td>
-                    </tr>
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <div class="h-10 w-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold">SW</div>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">Sarah Williams</div>
-                                    <div class="text-sm text-gray-500">sarah@example.com</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Operations</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">37.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">37.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">0.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Complete</span>
-                        </td>
-                    </tr>
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 h-10 w-10">
-                                    <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold">RB</div>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">Robert Brown</div>
-                                    <div class="text-sm text-gray-500">robert@example.com</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Engineering</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">36.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">36.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">0.0</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Complete</span>
+                    <tr id="no-employees-row">
+                        <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                            Loading employee data...
                         </td>
                     </tr>
                 </tbody>
@@ -202,24 +73,16 @@
 
         <div class="flex items-center justify-between border-t border-gray-200 pt-4 mt-4">
             <div>
-                <p class="text-sm text-gray-700">
+                <p id="pagination-info" class="text-sm text-gray-700">
                     Showing <span class="font-medium">1</span> to <span class="font-medium">5</span> of <span class="font-medium">24</span> employees
                 </p>
             </div>
-            <div class="flex space-x-2">
-                <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            <div id="pagination-controls" class="flex space-x-2">
+                <button id="prev-page" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                     Previous
                 </button>
-                <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
-                    1
-                </button>
-                <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    2
-                </button>
-                <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    3
-                </button>
-                <button class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <!-- Page buttons will be inserted here -->
+                <button id="next-page" class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                     Next
                 </button>
             </div>
@@ -229,11 +92,21 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Load departments for the filter dropdown
+        // Global variables
+        let allEmployees = [];
+        let filteredEmployees = [];
+        let departmentData = [];
+        let currentPage = 1;
+        let itemsPerPage = 5;
+        let sortDirection = 'desc'; // 'asc' for ascending, 'desc' for descending
+
+        // Load departments for the filter dropdown and get all employees
         loadDepartments();
+        loadAllEmployees();
 
         // Add event listener for department filter
         document.getElementById('department-filter').addEventListener('change', function() {
+            console.log("Department filter changed to:", this.value);
             filterEmployeesByDepartment(this.value);
         });
 
@@ -241,99 +114,505 @@
         document.getElementById('team-employee-search').addEventListener('input', function() {
             searchEmployees(this.value);
         });
-    });
 
-    // Function to load departments into the filter dropdown
-    function loadDepartments() {
-        fetch('/api/departments/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.departments) {
-                    const departmentFilter = document.getElementById('department-filter');
-                    
-                    // Clear existing options except the first one (All Departments)
-                    while (departmentFilter.options.length > 1) {
-                        departmentFilter.remove(1);
+        // Add event listener for sorting by hours
+        document.getElementById('sort-by-hours').addEventListener('click', function() {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            this.querySelector('i').className = sortDirection === 'asc' ? 
+                'fas fa-sort-amount-up text-gray-600' : 
+                'fas fa-sort-amount-down text-gray-600';
+            
+            sortEmployees();
+        });
+
+        // Add event listeners for pagination
+        document.getElementById('prev-page').addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayEmployees();
+            }
+        });
+
+        document.getElementById('next-page').addEventListener('click', function() {
+            const maxPage = Math.ceil(filteredEmployees.length / itemsPerPage);
+            if (currentPage < maxPage) {
+                currentPage++;
+                displayEmployees();
+            }
+        });
+
+        // Function to get CSRF token for POST requests
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
                     }
-                    
-                    // Add department options
-                    data.departments.forEach(dept => {
-                        const option = document.createElement('option');
-                        option.value = dept.id;
-                        option.textContent = dept.name;
-                        departmentFilter.appendChild(option);
-                    });
                 }
-            })
-            .catch(error => {
-                console.error('Error loading departments:', error);
-            });
-    }
-
-    // Function to filter employees by department
-    function filterEmployeesByDepartment(departmentId) {
-        // Get all rows in the employee table
-        const rows = document.querySelectorAll('#employee-table tbody tr');
-        
-        if (!departmentId) {
-            // If no department selected, show all employees
-            rows.forEach(row => {
-                row.style.display = '';
-            });
-            return;
+            }
+            return cookieValue;
         }
-        
-        // Filter rows based on department
-        rows.forEach(row => {
-            const employeeDept = row.querySelector('td:nth-child(2)').textContent.trim();
-            const deptOption = document.querySelector(`#department-filter option[value="${departmentId}"]`);
-            const deptName = deptOption ? deptOption.textContent : '';
-            
-            if (deptName && employeeDept === deptName) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-    }
 
-    // Function to search employees
-    function searchEmployees(searchTerm) {
-        if (!searchTerm) {
-            // If search is cleared, reset to department filter only
-            filterEmployeesByDepartment(document.getElementById('department-filter').value);
-            return;
+        // Function to load departments into the filter dropdown
+        function loadDepartments() {
+            fetch('/api/departments/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.departments) {
+                        departmentData = data.departments;
+                        const departmentFilter = document.getElementById('department-filter');
+                        
+                        // Clear existing options except the first one (All Departments)
+                        while (departmentFilter.options.length > 1) {
+                            departmentFilter.remove(1);
+                        }
+                        
+                        // Add department options
+                        data.departments.forEach(dept => {
+                            const option = document.createElement('option');
+                            option.value = dept.id;
+                            option.textContent = dept.name;
+                            departmentFilter.appendChild(option);
+                        });
+
+                        // Load department statistics
+                        loadDepartmentStatistics(data.departments);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading departments:', error);
+                });
         }
-        
-        searchTerm = searchTerm.toLowerCase();
-        
-        // Get all rows in the employee table
-        const rows = document.querySelectorAll('#employee-table tbody tr');
-        
-        // Filter rows based on employee name or email
-        rows.forEach(row => {
-            const employeeName = row.querySelector('td:first-child .text-sm.font-medium').textContent.toLowerCase();
-            const employeeEmail = row.querySelector('td:first-child .text-sm.text-gray-500').textContent.toLowerCase();
-            const departmentFilter = document.getElementById('department-filter').value;
+
+        // Function to load all employees
+        function loadAllEmployees() {
+            fetch('/api/employees/get/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.employees) {
+                        // Add console logs for debugging
+                        console.log("Raw employee data:", data.employees);
+                        
+                        allEmployees = data.employees.map(emp => {
+                            // Debug each employee's department information
+                            console.log(`Employee: ${emp.full_name}, Department ID: ${emp.department_id}, Department: ${emp.department}`);
+                            
+                            // Add calculated fields
+                            const regularHours = emp.total_hours ? (emp.total_hours > 40 ? 40 : emp.total_hours) : 0;
+                            const overtimeHours = emp.total_hours ? (emp.total_hours > 40 ? emp.total_hours - 40 : 0) : 0;
+                            const status = emp.status || (emp.total_hours >= 40 ? 'Complete' : 'Pending');
+
+                            return {
+                                ...emp,
+                                regular_hours: regularHours,
+                                overtime_hours: overtimeHours,
+                                status: status
+                            };
+                        });
+
+                        // Set filtered employees to all employees initially
+                        filteredEmployees = [...allEmployees];
+
+                        // Display employees
+                        displayEmployees();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading employees:', error);
+                    document.getElementById('no-employees-row').querySelector('td').textContent = 
+                        'Error loading employee data. Please try again.';
+                });
+        }
+
+        // Function to load department statistics
+        function loadDepartmentStatistics(departments) {
+            // In a real application, you would fetch this data from an API
+            // For now, we'll simulate it with the data we have
+
+            fetch('/api/departments/hours/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.department_hours) {
+                        displayDepartmentStats(data.department_hours);
+                    } else {
+                        // If the API doesn't exist or fails, generate dummy data based on employees
+                        const deptHours = {};
+                        let totalHours = 0;
+                        
+                        // Sum hours by department
+                        allEmployees.forEach(emp => {
+                            const deptId = emp.department_id || 'unknown';
+                            deptHours[deptId] = (deptHours[deptId] || 0) + (emp.total_hours || 0);
+                            totalHours += (emp.total_hours || 0);
+                        });
+
+                        // Convert to array format for display
+                        const departmentHours = departments.map(dept => ({
+                            id: dept.id,
+                            name: dept.name,
+                            total_hours: deptHours[dept.id] || 0,
+                            percentage: totalHours ? ((deptHours[dept.id] || 0) / totalHours * 100) : 0
+                        }));
+
+                        displayDepartmentStats(departmentHours);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading department statistics:', error);
+                    generateDummyDepartmentStats(departments);
+                });
+        }
+
+        // Function to generate dummy department stats if API fails
+        function generateDummyDepartmentStats(departments) {
+            // Calculate hours from our employee data
+            const deptHours = {};
+            let totalHours = 0;
             
-            // Check if row matches the search term
-            const matchesSearch = employeeName.includes(searchTerm) || employeeEmail.includes(searchTerm);
+            // Sum hours by department
+            allEmployees.forEach(emp => {
+                const deptId = emp.department_id || 'unknown';
+                deptHours[deptId] = (deptHours[deptId] || 0) + (emp.total_hours || 0);
+                totalHours += (emp.total_hours || 0);
+            });
+
+            // Convert to array format for display
+            const departmentHours = departments.map(dept => ({
+                id: dept.id,
+                name: dept.name,
+                total_hours: deptHours[dept.id] || Math.floor(Math.random() * 100) + 30, // Fallback to random
+                percentage: totalHours ? ((deptHours[dept.id] || 0) / totalHours * 100) : Math.floor(Math.random() * 40) + 10 // Fallback to random
+            }));
+
+            displayDepartmentStats(departmentHours);
+        }
+
+        // Function to display department statistics
+        function displayDepartmentStats(departmentHours) {
+            const container = document.getElementById('department-stats-container');
+            container.innerHTML = ''; // Clear loading message
+
+            // Colors for department bars
+            const colors = ['indigo', 'green', 'yellow', 'purple', 'blue', 'red', 'pink', 'teal'];
             
-            // Check if row matches the department filter (if active)
-            let matchesDept = true;
-            if (departmentFilter) {
-                const employeeDept = row.querySelector('td:nth-child(2)').textContent.trim();
-                const deptOption = document.querySelector(`#department-filter option[value="${departmentFilter}"]`);
-                const deptName = deptOption ? deptOption.textContent : '';
-                matchesDept = (deptName && employeeDept === deptName);
+            // Sort departments by hours
+            const sortedDepts = [...departmentHours].sort((a, b) => b.total_hours - a.total_hours);
+            
+            // Display each department
+            sortedDepts.forEach((dept, index) => {
+                const colorIndex = index % colors.length;
+                const color = colors[colorIndex];
+                
+                const deptDiv = document.createElement('div');
+                deptDiv.innerHTML = `
+                    <div class="flex justify-between mb-1">
+                        <span class="text-sm font-medium text-gray-700">${dept.name}</span>
+                        <span class="text-sm font-medium text-gray-700">${dept.total_hours.toFixed(1)}h</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-${color}-500 h-2.5 rounded-full" style="width: ${Math.min(100, dept.percentage)}%"></div>
+                    </div>
+                `;
+                container.appendChild(deptDiv);
+            });
+
+            // If no departments, show a message
+            if (sortedDepts.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500">No department data available</p>';
             }
+        }
+
+        // Function to filter employees by department
+        function filterEmployeesByDepartment(departmentId) {
+            const searchTerm = document.getElementById('team-employee-search').value.toLowerCase().trim();
             
-            // Show row only if it matches both search and department filter
-            if (matchesSearch && matchesDept) {
-                row.style.display = '';
+            // If no department selected, show all employees (possibly filtered by search)
+            if (!departmentId) {
+                if (searchTerm) {
+                    // Filter by search term only
+                    filteredEmployees = allEmployees.filter(emp => {
+                        return emp.full_name.toLowerCase().includes(searchTerm) || 
+                               (emp.email && emp.email.toLowerCase().includes(searchTerm));
+                    });
+                } else {
+                    // No filters at all
+                    filteredEmployees = [...allEmployees];
+                }
             } else {
-                row.style.display = 'none';
+                // Filter by department
+                filteredEmployees = allEmployees.filter(emp => {
+                    // Important: Make proper comparison of department ID
+                    const deptMatch = emp.department_id == departmentId;
+                    
+                    // If there's also a search term, check that too
+                    if (searchTerm) {
+                        return deptMatch && (
+                            emp.full_name.toLowerCase().includes(searchTerm) || 
+                            (emp.email && emp.email.toLowerCase().includes(searchTerm))
+                        );
+                    }
+                    return deptMatch;
+                });
             }
+            
+            // Reset to first page and update display
+            currentPage = 1;
+            displayEmployees();
+        }
+
+        // Function to search employees
+        function searchEmployees(searchTerm) {
+            searchTerm = searchTerm.toLowerCase().trim();
+            const departmentId = document.getElementById('department-filter').value;
+            
+            if (!searchTerm && !departmentId) {
+                // No filters, show all employees
+                filteredEmployees = [...allEmployees];
+            } else {
+                // Apply filters
+                filteredEmployees = allEmployees.filter(emp => {
+                    const nameMatch = emp.full_name.toLowerCase().includes(searchTerm);
+                    const emailMatch = emp.email && emp.email.toLowerCase().includes(searchTerm);
+                    const searchMatch = !searchTerm || nameMatch || emailMatch;
+                    
+                    const deptMatch = !departmentId || emp.department_id == departmentId;
+                    
+                    return searchMatch && deptMatch;
+                });
+            }
+            
+            // Reset to first page and update display
+            currentPage = 1;
+            displayEmployees();
+        }
+
+        // Function to sort employees by total hours
+        function sortEmployees() {
+            filteredEmployees.sort((a, b) => {
+                const hoursA = a.total_hours || 0;
+                const hoursB = b.total_hours || 0;
+                return sortDirection === 'asc' ? hoursA - hoursB : hoursB - hoursA;
+            });
+            
+            displayEmployees();
+        }
+
+        // Function to display employees with pagination
+        function displayEmployees() {
+            const tableBody = document.getElementById('employee-table').querySelector('tbody');
+            tableBody.innerHTML = ''; // Clear existing rows
+            
+            // Check if there are any employees to display
+            if (filteredEmployees.length === 0) {
+                const tr = document.createElement('tr');
+                tr.id = 'no-employees-row';
+                tr.innerHTML = `
+                    <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                        No employees match your criteria
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+                
+                // Update pagination info
+                document.getElementById('pagination-info').textContent = 'No results to display';
+                
+                // Hide pagination controls
+                document.getElementById('pagination-controls').style.display = 'none';
+                return;
+            }
+            
+            // Show pagination controls
+            document.getElementById('pagination-controls').style.display = 'flex';
+            
+            // Calculate pagination
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredEmployees.length);
+            const pageEmployees = filteredEmployees.slice(startIndex, endIndex);
+            
+            // Display current page of employees
+            pageEmployees.forEach(emp => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-50';
+                
+                // Generate initials from name
+                const nameParts = emp.full_name.split(' ');
+                const initials = nameParts.map(part => part[0]).join('').toUpperCase();
+                
+                // Generate color for the avatar
+                const colors = ['indigo', 'purple', 'blue', 'green', 'red', 'yellow', 'pink'];
+                const colorIndex = emp.id % colors.length;
+                const color = colors[colorIndex];
+                
+                // Get the department name
+                let deptName = 'N/A';
+                if (emp.department_id && departmentData.length > 0) {
+                    const dept = departmentData.find(d => d.id == emp.department_id);
+                    deptName = dept ? dept.name : deptName;
+                } else if (emp.department) {
+                    deptName = emp.department;
+                }
+                
+                // Determine status class
+                const statusClass = emp.status === 'Complete' ? 
+                    'bg-green-100 text-green-800' : 
+                    emp.status === 'Rejected' ? 
+                        'bg-red-100 text-red-800' : 
+                        'bg-yellow-100 text-yellow-800';
+                
+                tr.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                ${emp.profile_picture ? 
+                                    `<img class="h-10 w-10 rounded-full" src="${emp.profile_picture}" alt="${emp.full_name}">` :
+                                    `<div class="h-10 w-10 rounded-full bg-${color}-100 flex items-center justify-center text-${color}-600 font-bold">${initials}</div>`
+                                }
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">${emp.full_name}</div>
+                                <div class="text-sm text-gray-500">${emp.email || ''}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deptName}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${(emp.total_hours || 0).toFixed(1)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${emp.regular_hours.toFixed(1)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${emp.overtime_hours.toFixed(1)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                            ${emp.status || 'Pending'}
+                        </span>
+                    </td>
+                `;
+                
+                tableBody.appendChild(tr);
+            });
+            
+            // Update pagination info
+            document.getElementById('pagination-info').textContent = 
+                `Showing ${startIndex + 1} to ${endIndex} of ${filteredEmployees.length} employees`;
+            
+            // Update pagination controls
+            updatePaginationControls();
+        }
+
+        // Function to update pagination controls
+        function updatePaginationControls() {
+            const maxPage = Math.ceil(filteredEmployees.length / itemsPerPage);
+            const paginationControls = document.getElementById('pagination-controls');
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            
+            // Enable/disable previous and next buttons
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === maxPage;
+            
+            // Remove existing page buttons
+            const existingPageButtons = paginationControls.querySelectorAll('.page-btn');
+            existingPageButtons.forEach(btn => btn.remove());
+            
+            // Add page buttons
+            const maxVisiblePages = 3; // Number of page buttons to show
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(maxPage, startPage + maxVisiblePages - 1);
+            
+            // Adjust if we're near the end
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+            
+            // Insert page buttons between prev and next
+            for (let i = startPage; i <= endPage; i++) {
+                const pageBtn = document.createElement('button');
+                pageBtn.className = `page-btn px-3 py-1 border border-gray-300 rounded-md text-sm font-medium 
+                    ${i === currentPage ? 'text-white bg-indigo-600 hover:bg-indigo-700' : 'text-gray-700 bg-white hover:bg-gray-50'}`;
+                pageBtn.textContent = i;
+                pageBtn.addEventListener('click', function() {
+                    currentPage = i;
+                    displayEmployees();
+                });
+                
+                nextBtn.insertAdjacentElement('beforebegin', pageBtn);
+            }
+            
+            // Add ellipsis if needed
+            if (startPage > 1) {
+                const firstPageBtn = document.createElement('button');
+                firstPageBtn.className = 'page-btn px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50';
+                firstPageBtn.textContent = '1';
+                firstPageBtn.addEventListener('click', function() {
+                    currentPage = 1;
+                    displayEmployees();
+                });
+                
+                const ellipsisStart = document.createElement('span');
+                ellipsisStart.className = 'px-2 py-1 text-gray-500';
+                ellipsisStart.textContent = '...';
+                
+                nextBtn.insertAdjacentElement('beforebegin', ellipsisStart);
+                nextBtn.insertAdjacentElement('beforebegin', firstPageBtn);
+            }
+            
+            if (endPage < maxPage) {
+                const lastPageBtn = document.createElement('button');
+                lastPageBtn.className = 'page-btn px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50';
+                lastPageBtn.textContent = maxPage;
+                lastPageBtn.addEventListener('click', function() {
+                    currentPage = maxPage;
+                    displayEmployees();
+                });
+                
+                const ellipsisEnd = document.createElement('span');
+                ellipsisEnd.className = 'px-2 py-1 text-gray-500';
+                ellipsisEnd.textContent = '...';
+                
+                nextBtn.insertAdjacentElement('beforebegin', ellipsisEnd);
+                nextBtn.insertAdjacentElement('beforebegin', lastPageBtn);
+            }
+        }
+
+        // Export employee hours to CSV
+        document.getElementById('export-employee-hours').addEventListener('click', function() {
+            // Create CSV content
+            let csvContent = 'data:text/csv;charset=utf-8,';
+            csvContent += 'Name,Department,Total Hours,Regular Hours,Overtime Hours,Status\n';
+            
+            filteredEmployees.forEach(emp => {
+                // Get department name
+                let deptName = 'N/A';
+                if (emp.department_id && departmentData.length > 0) {
+                    const dept = departmentData.find(d => d.id == emp.department_id);
+                    deptName = dept ? dept.name : deptName;
+                } else if (emp.department) {
+                    deptName = emp.department;
+                }
+                
+                const row = [
+                    `"${emp.full_name}"`,
+                    `"${deptName}"`,
+                    (emp.total_hours || 0).toFixed(1),
+                    emp.regular_hours.toFixed(1),
+                    emp.overtime_hours.toFixed(1),
+                    `"${emp.status || 'Pending'}"`
+                ];
+                
+                csvContent += row.join(',') + '\n';
+            });
+            
+            // Create download link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `employee-hours-${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            
+            // Trigger download
+            link.click();
+            document.body.removeChild(link);
         });
-    }
+    });
 </script>

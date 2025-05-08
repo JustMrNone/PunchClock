@@ -207,9 +207,58 @@
             </div>
         </form>
     </div>
+    
+    <!-- Employee Profile Picture Management Section -->
+    <div class="bg-white rounded-xl p-6 shadow-md mt-8">
+        <h3 class="text-xl font-semibold text-gray-800 mb-4">Manage Employee Profile Pictures</h3>
+        
+        <div class="grid grid-cols-1 gap-6">
+            <div class="mb-4">
+                <label for="employee-department-filter" class="block text-sm font-medium text-gray-700">Select Department</label>
+                <select id="employee-department-filter" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">-- Select Department --</option>
+                    <!-- Departments will be loaded dynamically -->
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="employee-select-filter" class="block text-sm font-medium text-gray-700">Select Employee</label>
+                <select id="employee-select-filter" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled>
+                    <option value="">-- Select Employee --</option>
+                </select>
+            </div>
+            
+            <!-- Employee profile picture management section (initially hidden) -->
+            <div id="employee-profile-section" class="mt-6 hidden">
+                <div class="flex flex-col items-center p-6 border border-gray-200 rounded-lg bg-gray-50">
+                    <h4 id="employee-name-display" class="text-lg font-medium text-gray-800 mb-3"></h4>
+                    
+                    <!-- Employee profile picture container -->
+                    <div class="mb-4">
+                        <div id="employee-pic-container" class="w-24 h-24 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden relative border-2 border-white shadow-lg">
+                            <!-- Employee initials shown when no profile picture -->
+                            <span id="employee-initials" class="text-2xl font-bold text-white">??</span>
+                            <!-- Employee profile image -->
+                            <img id="employee-profile-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Employee Profile Picture">
+                        </div>
+                    </div>
+                    
+                    <!-- Action buttons -->
+                    <div class="flex space-x-3 mt-4">
+                        <input type="file" id="employee-pic-input" class="hidden" accept="image/*">
+                        <button id="upload-employee-pic-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                            Change Picture
+                        </button>
+                        <button id="remove-employee-pic-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 hidden">
+                            Remove Picture
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <br></br>
     <br></br>
-
 
     <!-- Department Delete Confirmation Modal -->
     <div id="delete-department-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
@@ -230,8 +279,67 @@
             </div>
         </div>
     </div>
+    
+    <!-- Employee Image cropping modal -->
+    <div id="employee-crop-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Crop Employee Profile Picture</h3>
+                <button id="close-employee-crop-modal-btn" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-4 relative">
+                <div id="employee-crop-container" class="w-full h-64 bg-gray-100 overflow-hidden relative">
+                    <!-- The image will be inserted here by JavaScript -->
+                </div>
+                <div class="text-xs text-gray-500 mt-2 text-center">Drag to position • Use mouse wheel to zoom</div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-employee-crop-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="apply-employee-crop-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Apply</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Employee picture delete confirmation modal -->
+    <div id="employee-delete-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-75 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Remove Employee Profile Picture</h3>
+                <button id="close-employee-delete-modal-btn" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <br></br>
+            <br></br>
+            <div class="mb-6">
+                <div class="flex items-center mb-4">
+                    <div class="mr-4 flex-shrink-0">
+                        <div class="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
+                            <img id="employee-delete-preview-image" class="w-full h-full object-cover" src="" alt="Employee Profile Picture">
+                        </div>
+                    </div>
+                    <p class="text-gray-700">Are you sure you want to remove this employee's profile picture? This action cannot be undone.</p>
+                </div>
+                <div id="employee-delete-status" class="hidden rounded-md p-3 mt-2"></div>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-employee-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="confirm-employee-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    <span id="employee-delete-btn-text">Remove Picture</span>
+                    <span id="employee-delete-btn-loading" class="hidden">
+                        <svg class="animate-spin h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing...
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
-
 
 <!-- Add CropperJS library -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css">
@@ -1096,7 +1204,351 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return cookieValue;
     }
+    
+    // Employee Profile Picture Management
+    const employeeDepartmentFilter = document.getElementById('employee-department-filter');
+    const employeeSelectFilter = document.getElementById('employee-select-filter');
+    const employeeProfileSection = document.getElementById('employee-profile-section');
+    const employeeNameDisplay = document.getElementById('employee-name-display');
+    const employeePicContainer = document.getElementById('employee-pic-container');
+    const employeeInitials = document.getElementById('employee-initials'); // Define the missing variable
+    const employeeProfileImage = document.getElementById('employee-profile-image'); // Define the missing variable
+    const employeePicInput = document.getElementById('employee-pic-input');
+    const uploadEmployeePicBtn = document.getElementById('upload-employee-pic-btn');
+    const removeEmployeePicBtn = document.getElementById('remove-employee-pic-btn');
+    
+    // Employee crop modal elements
+    const employeeCropModal = document.getElementById('employee-crop-modal');
+    const employeeCropContainer = document.getElementById('employee-crop-container');
+    const closeEmployeeCropModalBtn = document.getElementById('close-employee-crop-modal-btn');
+    const cancelEmployeeCropBtn = document.getElementById('cancel-employee-crop-btn');
+    const applyEmployeeCropBtn = document.getElementById('apply-employee-crop-btn');
+    
+    // Employee delete modal elements
+    const employeeDeleteModal = document.getElementById('employee-delete-modal');
+    const closeEmployeeDeleteModalBtn = document.getElementById('close-employee-delete-modal-btn');
+    const cancelEmployeeDeleteBtn = document.getElementById('cancel-employee-delete-btn');
+    const confirmEmployeeDeleteBtn = document.getElementById('confirm-employee-delete-btn');
+    const employeeDeletePreviewImage = document.getElementById('employee-delete-preview-image');
+    const employeeDeleteStatus = document.getElementById('employee-delete-status');
+    const employeeDeleteBtnText = document.getElementById('employee-delete-btn-text');
+    const employeeDeleteBtnLoading = document.getElementById('employee-delete-btn-loading');
+    
+    let employeeCropper;
+    let currentEmployeeId = null;
+    let currentEmployeeName = '';
+    
+    // Load departments for filter dropdown
+    function loadDepartmentsForFilter() {
+        fetch('/api/departments/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.departments) {
+                    // Clear existing options except the first one
+                    employeeDepartmentFilter.innerHTML = '<option value="">-- Select Department --</option>';
+                    
+                    // Add department options
+                    data.departments.forEach(dept => {
+                        if (dept.employee_count > 0) {  // Only show departments with employees
+                            const option = document.createElement('option');
+                            option.value = dept.id;
+                            option.textContent = dept.name;
+                            employeeDepartmentFilter.appendChild(option);
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading departments:', error);
+                showNotification('Failed to load departments for filtering.', 'error');
+            });
+    }
+    
+    // Handle department selection change
+    employeeDepartmentFilter.addEventListener('change', function() {
+        const departmentId = this.value;
+        
+        // Reset and disable employee select
+        employeeSelectFilter.innerHTML = '<option value="">-- Select Employee --</option>';
+        employeeSelectFilter.disabled = !departmentId;
+        
+        // Hide employee profile section
+        employeeProfileSection.classList.add('hidden');
+        
+        if (departmentId) {
+            // Load employees for the selected department
+            fetch(`/api/departments/${departmentId}/employees/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.employees) {
+                        // Add employee options
+                        data.employees.forEach(employee => {
+                            const option = document.createElement('option');
+                            option.value = employee.id;
+                            option.textContent = employee.name;
+                            employeeSelectFilter.appendChild(option);
+                        });
+                        
+                        if (data.employees.length === 0) {
+                            const option = document.createElement('option');
+                            option.value = "";
+                            option.textContent = "No employees in this department";
+                            employeeSelectFilter.appendChild(option);
+                        }
+                    } else {
+                        showNotification('Failed to load employees.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading employees:', error);
+                    showNotification('Failed to load employees. Please try again.', 'error');
+                });
+        }
+    });
+    
+    // Handle employee selection change
+    employeeSelectFilter.addEventListener('change', function() {
+        const employeeId = this.value;
+        
+        if (!employeeId) {
+            employeeProfileSection.classList.add('hidden');
+            return;
+        }
+        
+        currentEmployeeId = employeeId;
+        currentEmployeeName = employeeSelectFilter.options[employeeSelectFilter.selectedIndex].text;
+        
+        // Set employee name display
+        employeeNameDisplay.textContent = currentEmployeeName;
+        
+        // Show employee profile section
+        employeeProfileSection.classList.remove('hidden');
+        
+        // Get employee initials
+        const nameParts = currentEmployeeName.split(' ');
+        let initials = '';
+        if (nameParts.length >= 2) {
+            initials = (nameParts[0].charAt(0) + nameParts[1].charAt(0)).toUpperCase();
+        } else if (nameParts.length === 1) {
+            initials = nameParts[0].charAt(0).toUpperCase();
+        } else {
+            initials = '??';
+        }
+        
+        employeeInitials.textContent = initials;
+        
+        // Fetch employee's profile picture
+        fetchEmployeeProfilePicture(employeeId);
+    });
+    
+    // Fetch employee profile picture
+    function fetchEmployeeProfilePicture(employeeId) {
+        fetch(`/api/employees/${employeeId}/profile-picture/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.has_image) {
+                    // Show profile image
+                    employeeInitials.classList.add('hidden');
+                    employeeProfileImage.classList.remove('hidden');
+                    employeeProfileImage.src = data.image_url;
+                    removeEmployeePicBtn.classList.remove('hidden');
+                } else {
+                    // Show initials
+                    employeeInitials.classList.remove('hidden');
+                    employeeProfileImage.classList.add('hidden');
+                    employeeProfileImage.src = '';
+                    removeEmployeePicBtn.classList.add('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching employee profile picture:', error);
+                // Show initials on error
+                employeeInitials.classList.remove('hidden');
+                employeeProfileImage.classList.add('hidden');
+                employeeProfileImage.src = '';
+                removeEmployeePicBtn.classList.add('hidden');
+            });
+    }
+    
+    // Trigger file input when upload button is clicked
+    uploadEmployeePicBtn.addEventListener('click', function() {
+        employeePicInput.click();
+    });
+    
+    // Handle file selection for employee
+    employeePicInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                employeeCropContainer.innerHTML = `<img id="employee-crop-image" src="${e.target.result}" class="max-w-full">`;
+                const cropImage = document.getElementById('employee-crop-image');
+                
+                employeeCropModal.classList.remove('hidden');
+                
+                // Initialize cropper after image is loaded
+                cropImage.onload = function() {
+                    employeeCropper = new Cropper(cropImage, {
+                        aspectRatio: 1,
+                        viewMode: 2,
+                        ready: function() {
+                            // Set initial crop box size to be square
+                            const containerData = employeeCropper.getContainerData();
+                            const minSize = Math.min(containerData.width, containerData.height);
+                            employeeCropper.setCropBoxData({
+                                width: minSize * 0.8,
+                                height: minSize * 0.8
+                            });
+                        }
+                    });
+                };
+            };
+            
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
+    
+    // Close employee crop modal
+    closeEmployeeCropModalBtn.addEventListener('click', closeEmployeeCropModal);
+    cancelEmployeeCropBtn.addEventListener('click', closeEmployeeCropModal);
+    
+    function closeEmployeeCropModal() {
+        employeeCropModal.classList.add('hidden');
+        if (employeeCropper) {
+            employeeCropper.destroy();
+            employeeCropper = null;
+        }
+        employeePicInput.value = ''; // Reset file input
+    }
+    
+    // Apply employee crop
+    applyEmployeeCropBtn.addEventListener('click', function() {
+        if (employeeCropper) {
+            const croppedCanvas = employeeCropper.getCroppedCanvas({
+                width: 256,
+                height: 256,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
+            });
+            
+            const croppedImage = croppedCanvas.toDataURL('image/png');
+            
+            // Update UI first for better user experience
+            employeeInitials.classList.add('hidden');
+            employeeProfileImage.classList.remove('hidden');
+            employeeProfileImage.src = croppedImage;
+            removeEmployeePicBtn.classList.remove('hidden');
+            
+            // Close modal
+            closeEmployeeCropModal();
+            
+            // Upload to server
+            uploadEmployeeProfilePicture(croppedImage);
+        }
+    });
+    
+    // Upload employee profile picture to server
+    function uploadEmployeeProfilePicture(imageData) {
+        if (!currentEmployeeId) {
+            showNotification('No employee selected', 'error');
+            return;
+        }
+        
+        // Show loading notification
+        showNotification('Uploading employee profile picture...', 'info');
+        
+        // Send to server - Note: Using JSON format for this endpoint, not FormData
+        fetch('/api/employee-profile-picture/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                employee_id: currentEmployeeId,
+                image_data: imageData
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                employeeProfileImage.src = data.image_url; // Use the server URL
+                showNotification('Employee profile picture uploaded successfully.');
+            } else {
+                showNotification(data.message || 'Failed to upload employee profile picture.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error uploading employee profile picture:', error);
+            showNotification('An error occurred while uploading the employee profile picture.', 'error');
+        });
+    }
+    
+    // Handle remove employee picture button click
+    removeEmployeePicBtn.addEventListener('click', function() {
+        if (!currentEmployeeId) return;
+        
+        employeeDeletePreviewImage.src = employeeProfileImage.src;
+        employeeDeleteModal.classList.remove('hidden');
+    });
+    
+    // Close employee delete modal
+    closeEmployeeDeleteModalBtn.addEventListener('click', closeEmployeeDeleteModal);
+    cancelEmployeeDeleteBtn.addEventListener('click', closeEmployeeDeleteModal);
+    
+    function closeEmployeeDeleteModal() {
+        employeeDeleteModal.classList.add('hidden');
+        employeeDeleteStatus.classList.add('hidden');
+        employeeDeleteStatus.textContent = '';
+    }
+    
+    // Confirm employee picture delete
+    confirmEmployeeDeleteBtn.addEventListener('click', function() {
+        if (!currentEmployeeId) return;
+        
+        // Show loading
+        employeeDeleteBtnText.classList.add('hidden');
+        employeeDeleteBtnLoading.classList.remove('hidden');
+        
+        // Call server to delete the employee's profile picture
+        fetch(`/api/employees/${currentEmployeeId}/profile-picture/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                closeEmployeeDeleteModal();
+                
+                // Update UI
+                employeeInitials.classList.remove('hidden');
+                employeeProfileImage.classList.add('hidden');
+                employeeProfileImage.src = '';
+                removeEmployeePicBtn.classList.add('hidden');
+                
+                showNotification('Employee profile picture removed successfully.');
+            } else {
+                employeeDeleteStatus.classList.remove('hidden');
+                employeeDeleteStatus.textContent = data.message || 'Failed to remove employee profile picture.';
+                employeeDeleteStatus.classList.add('bg-red-100', 'text-red-800', 'p-3', 'rounded-md');
+            }
+        })
+        .catch(error => {
+            console.error('Error removing employee profile picture:', error);
+            employeeDeleteStatus.classList.remove('hidden');
+            employeeDeleteStatus.textContent = 'An error occurred while removing the employee profile picture.';
+            employeeDeleteStatus.classList.add('bg-red-100', 'text-red-800', 'p-3', 'rounded-md');
+        })
+        .finally(() => {
+            employeeDeleteBtnText.classList.remove('hidden');
+            employeeDeleteBtnLoading.classList.add('hidden');
+        });
+    });
+    
+    // Load departments for filter on page load
+    loadDepartmentsForFilter();
 });
-
-
 </script>

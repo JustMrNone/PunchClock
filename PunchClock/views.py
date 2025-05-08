@@ -9,7 +9,9 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.utils import timezone
 import json
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
+from datetime import time as dt_time  # Rename the datetime.time import
+import time  # Keep the time module import
 from .models import CalendarSettings, PersonalNote, CompanySettings, TimeEntry, Employee, ProfilePicture, Department
 # Import additional libraries for image handling
 from PIL import Image
@@ -79,6 +81,18 @@ class PunchCard(LoginRequiredMixin, View):
             
             context['display_name'] = employee.full_name
             context['initials'] = ''.join(x[0].upper() for x in employee.full_name.split()) if employee.full_name else employee.user.username[:2].upper()
+        
+        # Get profile picture information
+        try:
+            profile_pic = ProfilePicture.objects.filter(user=request.user).first()
+            if profile_pic and profile_pic.image and profile_pic.image.name:
+                context['has_profile_pic'] = True
+                context['profile_pic_url'] = request.build_absolute_uri(profile_pic.image.url)
+            else:
+                context['has_profile_pic'] = False
+        except Exception as e:
+            print(f"Error getting profile picture: {e}")
+            context['has_profile_pic'] = False
             
         return render(request, 'punch/punchcard/punchcard.html', context)
     
@@ -154,6 +168,7 @@ class AddEmployeeView(View):
         role = request.POST.get('employee_role')
         department_id = request.POST.get('employee_department')
         hire_date = request.POST.get('employee_hire_date')
+        profile_picture = request.POST.get('profile_picture')
 
         if not all([full_name, email, password, role, hire_date]):
             return JsonResponse({
@@ -188,6 +203,43 @@ class AddEmployeeView(View):
                     department=department,
                     hire_date=hire_date
                 )
+
+            # Handle profile picture if provided
+            if profile_picture:
+                try:
+                    # Parse the base64 data
+                    if profile_picture.startswith('data:image'):
+                        format, imgstr = profile_picture.split(';base64,')
+                        ext = format.split('/')[-1]
+                    else:
+                        imgstr = profile_picture
+                        ext = 'png'
+
+                    # Decode the base64 string
+                    data = base64.b64decode(imgstr)
+                    
+                    # Open the image using PIL
+                    img = Image.open(io.BytesIO(data))
+                    
+                    # Resize to 256x256
+                    img = img.resize((256, 256), Image.LANCZOS)
+                    
+                    # Save the image to a bytes buffer
+                    buffer = io.BytesIO()
+                    img.save(buffer, format=ext.upper())
+                    buffer.seek(0)
+                    
+                    # Create a filename with username and timestamp
+                    timestamp = int(time.time())
+                    filename = f"{user.username}_profile_{timestamp}.{ext}"
+                    
+                    # Save to database
+                    profile_pic = ProfilePicture.objects.create(user=user)
+                    profile_pic.image.save(filename, ContentFile(buffer.getvalue()), save=True)
+                except Exception as e:
+                    print(f"Error saving profile picture: {e}")
+                    # Continue even if profile picture fails
+                    pass
             
             return JsonResponse({
                 'success': True,
@@ -431,6 +483,7 @@ class GetEmployeesView(View):
                 'user_id': employee.user.id,
                 'full_name': employee.full_name,
                 'email': employee.user.email,
+                'department_id': employee.department.id if employee.department else None,
                 'department': employee.department.name if employee.department else 'N/A'
             } for employee in employees]
             
@@ -1264,6 +1317,187 @@ class GetProfilePictureView(View):
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
 
 @method_decorator(login_required, name='dispatch')
+class EmployeeProfilePictureView(UserPassesTestMixin, View):
+    """View to handle employee profile pictures (for admin users)"""
+    def test_func(self):
+        return self.request.user.is_staff
+        
+    def post(self, request):
+        try:
+            # Get the employee ID from request
+            data = json.loads(request.body)
+            employee_id = data.get('employee_id')
+            image_data = data.get('image_data')
+            
+            if not employee_id or not image_data:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Employee ID and image data are required'
+                }, status=400)
+            
+            # Verify employee belongs to this admin
+            try:
+                employee = Employee.objects.get(id=employee_id, admin=request.user)
+            except Employee.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Employee not found or not authorized'
+                }, status=404)
+            
+            # Parse the base64 data
+            if image_data.startswith('data:image'):
+                format, imgstr = image_data.split(';base64,')
+                ext = format.split('/')[-1]
+            else:
+                imgstr = image_data
+                ext = 'png'  # Default to png format
+            
+            # Decode the base64 string
+            data = base64.b64decode(imgstr)
+            
+            # Open the image using PIL
+            img = Image.open(io.BytesIO(data))
+            
+            # Crop to square (take the smaller dimension)
+            size = min(img.width, img.height)
+            left = (img.width - size) // 2
+            top = (img.height - size) // 2
+            right = left + size
+            bottom = top + size
+            
+            # Crop the image to a square
+            img = img.crop((left, top, right, bottom))
+            
+            # Resize to 256x256
+            img = img.resize((256, 256), Image.LANCZOS)
+            
+            # Save the image to a bytes buffer
+            buffer = io.BytesIO()
+            img.save(buffer, format=ext.upper())
+            buffer.seek(0)
+            
+            # Create a filename with username and timestamp
+            timestamp = int(time.time())
+            filename = f"{employee.user.username}_profile_{timestamp}.{ext}"
+            
+            # Save to database
+            profile_pic, created = ProfilePicture.objects.get_or_create(user=employee.user)
+            
+            # If updating an existing image, delete the old one
+            if profile_pic.image:
+                try:
+                    old_path = profile_pic.image.path
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+                except:
+                    pass  # Skip if there's an issue with the old file
+            
+            # Save the new image
+            profile_pic.image.save(filename, ContentFile(buffer.getvalue()), save=True)
+            
+            # Build absolute URL for the image
+            image_url = request.build_absolute_uri(profile_pic.image.url)
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Employee profile picture updated successfully',
+                'image_url': image_url
+            })
+        except Exception as e:
+            print(f"Error uploading employee profile picture: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+    
+    def delete(self, request):
+        try:
+            # Get the employee ID from request
+            employee_id = request.GET.get('employee_id')
+            
+            if not employee_id:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Employee ID is required'
+                }, status=400)
+            
+            # Verify employee belongs to this admin
+            try:
+                employee = Employee.objects.get(id=employee_id, admin=request.user)
+            except Employee.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Employee not found or not authorized'
+                }, status=404)
+            
+            # Get the profile picture
+            profile_pic = ProfilePicture.objects.filter(user=employee.user).first()
+            
+            if profile_pic and profile_pic.image:
+                # Delete the image file
+                try:
+                    if os.path.exists(profile_pic.image.path):
+                        os.remove(profile_pic.image.path)
+                except:
+                    pass  # Skip if there's an issue with the file
+                
+                # Clear the image field
+                profile_pic.image = None
+                profile_pic.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Employee profile picture removed successfully'
+            })
+        except Exception as e:
+            print(f"Error removing employee profile picture: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class GetEmployeeProfilePictureView(UserPassesTestMixin, View):
+    """View to get an employee's profile picture (for admin users)"""
+    def test_func(self):
+        return self.request.user.is_staff
+        
+    def get(self, request, employee_id):
+        try:
+            # Verify employee belongs to this admin
+            try:
+                employee = Employee.objects.get(id=employee_id, admin=request.user)
+            except Employee.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Employee not found or not authorized'
+                }, status=404)
+            
+            # Get the profile picture
+            profile_pic = ProfilePicture.objects.filter(user=employee.user).first()
+            
+            if profile_pic and profile_pic.image and profile_pic.image.name:
+                # Generate absolute URL for the image
+                image_url = request.build_absolute_uri(profile_pic.image.url)
+                
+                return JsonResponse({
+                    'success': True,
+                    'has_image': True,
+                    'image_url': image_url,
+                    'employee_name': employee.full_name
+                })
+            else:
+                return JsonResponse({
+                    'success': True,
+                    'has_image': False,
+                    'image_url': None,
+                    'employee_name': employee.full_name
+                })
+        except Exception as e:
+            print(f"Error fetching employee profile picture: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
 class DepartmentListView(View):
     """View to list all departments"""
     def get(self, request):
@@ -1492,3 +1726,33 @@ class DepartmentEmployeesView(View):
             })
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class UserSettingsView(View):
+    """View for user settings page"""
+    def get(self, request):
+        context = {}
+        # Get user profile information
+        try:
+            # Get profile picture information
+            profile_pic = ProfilePicture.objects.filter(user=request.user).first()
+            if profile_pic and profile_pic.image and profile_pic.image.name:
+                context['has_profile_pic'] = True
+                context['profile_pic_url'] = request.build_absolute_uri(profile_pic.image.url)
+            else:
+                context['has_profile_pic'] = False
+                
+            # Get user information
+            full_name = f"{request.user.first_name} {request.user.last_name}".strip() or request.user.username
+            initials = ''.join(x[0].upper() for x in full_name.split()) if full_name else request.user.username[:2].upper()
+                
+            context['full_name'] = full_name
+            context['initials'] = initials
+            context['email'] = request.user.email
+            
+            # Get theme preference from localStorage on client-side
+            
+        except Exception as e:
+            print(f"Error getting user settings: {e}")
+            
+        return render(request, 'punch/punchcard/settingsuser.html', context)

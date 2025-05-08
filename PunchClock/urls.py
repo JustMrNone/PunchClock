@@ -14,6 +14,7 @@ urlpatterns = [
     path('employee/calendar/', views.EmployeeCalendarView.as_view(), name='employee_calendar'),
     path('calendar/', views.EmployeeCalendarView.as_view(), name='calendar'), 
     path('add-employee/', views.AddEmployeeView.as_view(), name='add_employee'),
+    path('settings/', views.UserSettingsView.as_view(), name='settingsuser'),
     
     # API calender    
     path('api/calendar-settings/get/', views.GetCalendarSettingsView.as_view(), name='get_calendar_settings'),
@@ -31,6 +32,10 @@ urlpatterns = [
     # Profile picture endpoints
     path('api/profile-picture/', views.ProfilePictureView.as_view(), name='profile_picture'),
     path('api/profile-picture/get/', views.GetProfilePictureView.as_view(), name='get_profile_picture'),
+    
+    # Employee profile picture endpoints
+    path('api/employee-profile-picture/', views.EmployeeProfilePictureView.as_view(), name='employee_profile_picture'),
+    path('api/employees/<int:employee_id>/profile-picture/', views.GetEmployeeProfilePictureView.as_view(), name='get_employee_profile_picture'),
 
     # Add new API endpoints for employees
     path('api/employees/get/', views.GetEmployeesView.as_view(), name='get_employees'),
