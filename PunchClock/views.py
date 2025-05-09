@@ -2036,7 +2036,87 @@ class ExportGenerateView(View):
             filename = f'export_{timestamp}'
             
             try:
-                if format == 'csv':
+                if format == 'pdf':
+                    file_path = os.path.join(export_dir, f'{filename}.pdf')
+                    
+                    # Create HTML content with proper styling
+                    html = '''
+                    <html>
+                        <head>
+                            <meta charset="UTF-8">
+                            <style>
+                                body { font-family: Arial, sans-serif; }
+                                table { 
+                                    border-collapse: collapse; 
+                                    width: 100%; 
+                                    margin-bottom: 1em;
+                                }
+                                th, td { 
+                                    border: 1px solid #ddd; 
+                                    padding: 8px; 
+                                    text-align: left; 
+                                }
+                                th { 
+                                    background-color: #f2f2f2;
+                                    font-weight: bold;
+                                }
+                                tr:nth-child(even) { background-color: #f9f9f9; }
+                            </style>
+                        </head>
+                        <body>
+                            <h1>Export Report</h1>
+                            <table>
+                                <thead>
+                                    <tr>
+                    '''
+                    
+                    # Add table headers
+                    for key in data[0].keys():
+                        formatted_key = key.replace('_', ' ').title()
+                        html += f'<th>{formatted_key}</th>'
+                    
+                    html += '''
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    '''
+                    
+                    # Add table data
+                    for row in data:
+                        html += '<tr>'
+                        for value in row.values():
+                            html += f'<td>{value}</td>'
+                        html += '</tr>'
+                    
+                    html += '''
+                                </tbody>
+                            </table>
+                        </body>
+                    </html>
+                    '''
+                    
+                    # Save HTML to a temporary file
+                    temp_html = os.path.join(export_dir, f'{filename}_temp.html')
+                    with open(temp_html, 'w', encoding='utf-8') as f:
+                        f.write(html)
+                    
+                    try:
+                        # Use the xvfb-wrapped version of wkhtmltopdf
+                        config = pdfkit.configuration(wkhtmltopdf='/usr/local/bin/wkhtmltopdf-xvfb')
+                        pdfkit.from_file(temp_html, file_path, configuration=config)
+                        
+                        # Clean up temporary HTML file
+                        os.remove(temp_html)
+                        
+                        file_ext = '.pdf'
+                    except Exception as pdf_error:
+                        # If PDF generation fails, return helpful error
+                        return JsonResponse({
+                            'success': False,
+                            'message': f'Error generating PDF: {str(pdf_error)}'
+                        }, status=500)
+                
+                elif format == 'csv':
                     file_path = os.path.join(export_dir, f'{filename}.csv')
                     with open(file_path, 'w', newline='') as csvfile:
                         writer = csv.DictWriter(csvfile, fieldnames=data[0].keys())
@@ -2053,22 +2133,6 @@ class ExportGenerateView(View):
                     df = pd.DataFrame(data)
                     df.to_excel(file_path, index=False)
                     file_ext = '.xlsx'
-                else:  # pdf
-                    file_path = os.path.join(export_dir, f'{filename}.pdf')
-                    # Create HTML table for PDF
-                    html = '<table>'
-                    html += '<tr>'
-                    for key in data[0].keys():
-                        html += f'<th>{key}</th>'
-                    html += '</tr>'
-                    for row in data:
-                        html += '<tr>'
-                        for value in row.values():
-                            html += f'<td>{value}</td>'
-                        html += '</tr>'
-                    html += '</table>'
-                    pdfkit.from_string(html, file_path)
-                    file_ext = '.pdf'
 
                 # Construct the URL using the MEDIA_URL setting
                 file_url = f'{settings.MEDIA_URL.rstrip("/")}/exports/{filename}{file_ext}'

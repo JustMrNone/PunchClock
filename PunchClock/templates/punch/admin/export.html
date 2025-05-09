@@ -22,8 +22,12 @@
                             <option value="csv">CSV</option>
                             <option value="json">JSON</option>
                             <option value="excel">Excel</option>
-                            <option value="pdf">PDF</option>
+                            <option value="pdf" id="pdf-option">PDF</option>
                         </select>
+                        <div id="pdf-warning" class="hidden mt-2 text-sm text-amber-600">
+                            <i class="fas fa-exclamation-circle mr-1"></i>
+                            PDF export requires additional setup. Please install wkhtmltopdf first.
+                        </div>
                     </div>
                     
                     <!-- Date Range -->
@@ -597,10 +601,21 @@
                         }
                     } else {
                         // Show error message
+                        let errorMessage = data.message || 'Failed to generate export.';
+                        if (errorMessage.includes('wkhtmltopdf')) {
+                            errorMessage = 'PDF export requires wkhtmltopdf to be installed. Please select a different format or contact your administrator.';
+                            // Disable PDF option
+                            const pdfOption = document.getElementById('pdf-option');
+                            if (pdfOption) {
+                                pdfOption.disabled = true;
+                                pdfOption.title = 'PDF export is currently unavailable';
+                            }
+                            document.getElementById('pdf-warning').classList.remove('hidden');
+                        }
                         exportStatus.innerHTML = `
                             <div class="px-4 py-2 bg-red-100 text-red-700 rounded-lg">
                                 <i class="fas fa-exclamation-circle mr-2"></i>
-                                ${data.message || 'Failed to generate export.'}
+                                ${errorMessage}
                             </div>
                         `;
                     }
