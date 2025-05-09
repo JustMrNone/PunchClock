@@ -69,4 +69,10 @@ urlpatterns = [
     path('api/departments/<int:department_id>/update/', views.DepartmentUpdateView.as_view(), name='update_department'),
     path('api/departments/<int:department_id>/delete/', views.DepartmentDeleteView.as_view(), name='delete_department'),
     path('api/departments/<int:department_id>/employees/', views.DepartmentEmployeesView.as_view(), name='department_employees'),
+
+    # Export APIs
+    path('api/export/preview/', views.ExportPreviewView.as_view(), name='export_preview'),
+    path('api/export/generate/', views.ExportGenerateView.as_view(), name='export_generate'),
+    path('api/export/recent/', views.ExportRecentView.as_view(), name='export_recent'),
+    path('api/export/delete/<int:export_id>/', views.ExportDeleteView.as_view(), name='export_delete'),
 ]

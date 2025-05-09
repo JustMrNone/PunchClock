@@ -11,6 +11,11 @@ python = "^3.13"
 django = "^5.2"
 psycopg2-binary = "*"
 pillow = "^11.2.1"
+pandas = "^2.2.3"
+xlsxwriter = "^3.2.3"
+matplotlib = "^3.10.3"
+reportlab = "^4.4.0"
+pdfkit = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"

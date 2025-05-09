@@ -120,3 +120,15 @@ class ProfilePicture(models.Model):
     
     def __str__(self):
         return f"Profile picture for {self.user.username}"
+
+class Export(models.Model):
+    admin = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    format = models.CharField(max_length=10)  # csv, json, excel, pdf
+    report_type = models.CharField(max_length=20)  # productivity, attendance, etc.
+    start_date = models.DateField()
+    end_date = models.DateField()
+    file_url = models.CharField(max_length=500)  # URL to the exported file
+    
+    class Meta:
+        ordering = ['-created_at']
