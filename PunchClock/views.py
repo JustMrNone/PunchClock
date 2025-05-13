@@ -37,6 +37,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from io import BytesIO
 from django.conf import settings
 import pdfkit
+import traceback
 
 # Create your views here.
 
@@ -1923,6 +1924,7 @@ class ExportPreviewView(View):
                 'message': str(e)
             }, status=400)
 
+
 @method_decorator(login_required, name='dispatch')
 class ExportGenerateView(View):
     def post(self, request):
@@ -1940,14 +1942,12 @@ class ExportGenerateView(View):
             end_date = datetime.strptime(request.POST.get('end_date'), '%Y-%m-%d').date()
             filter_type = request.POST.get('filter_type')
             department_id = request.POST.get('department')
-            employee_id = request.POST.get('employee')
-
-            # Get time entries for both admin's entries and managed employees
+            employee_id = request.POST.get('employee')            # Get time entries for all employees including both managed employees and admin's own record
             entries = TimeEntry.objects.filter(
                 date__range=[start_date, end_date]
             ).filter(
                 Q(employee__admin=request.user) | Q(employee__user=request.user)
-            ).select_related('employee', 'employee__department', 'employee__user').distinct()
+            ).select_related('employee', 'employee__department', 'employee__user')
 
             # Apply additional filters if needed
             if filter_type == 'department' and department_id:
@@ -1955,10 +1955,10 @@ class ExportGenerateView(View):
             elif filter_type == 'employee' and employee_id:
                 entries = entries.filter(employee_id=employee_id)
 
-            # Get unique employees that have entries
+            # Get employees - include both managed employees and admin's own record
             employees = Employee.objects.filter(
-                id__in=entries.values_list('employee_id', flat=True)
-            ).distinct().select_related('user', 'department')
+                Q(admin=request.user) | Q(user=request.user)
+            ).select_related('user', 'department').distinct()
 
             # Group data if needed
             data = []
@@ -2030,16 +2030,19 @@ class ExportGenerateView(View):
             # Ensure media directories exist
             export_dir = os.path.join(settings.MEDIA_ROOT, 'exports')
             os.makedirs(export_dir, exist_ok=True)
-
+            
             # Generate unique filename
             timestamp = timezone.now().strftime("%Y%m%d_%H%M%S")
             filename = f'export_{timestamp}'
+            file_ext = None
+            file_path = None
             
             try:
                 if format == 'pdf':
-                    file_path = os.path.join(export_dir, f'{filename}.pdf')
+                    file_ext = '.pdf'
+                    file_path = os.path.join(export_dir, f'{filename}{file_ext}')
                     
-                    # Create HTML content with proper styling
+                    # Create HTML content
                     html = '''
                     <html>
                         <head>
@@ -2070,7 +2073,7 @@ class ExportGenerateView(View):
                                     <tr>
                     '''
                     
-                    # Add table headers
+                    # Add table headers and data
                     for key in data[0].keys():
                         formatted_key = key.replace('_', ' ').title()
                         html += f'<th>{formatted_key}</th>'
@@ -2081,7 +2084,6 @@ class ExportGenerateView(View):
                                 <tbody>
                     '''
                     
-                    # Add table data
                     for row in data:
                         html += '<tr>'
                         for value in row.values():
@@ -2100,39 +2102,52 @@ class ExportGenerateView(View):
                     with open(temp_html, 'w', encoding='utf-8') as f:
                         f.write(html)
                     
-                    try:
-                        # Use the xvfb-wrapped version of wkhtmltopdf
+                    try:                        # Use the wkhtmltopdf-xvfb wrapper script that's configured in the Docker container
                         config = pdfkit.configuration(wkhtmltopdf='/usr/local/bin/wkhtmltopdf-xvfb')
-                        pdfkit.from_file(temp_html, file_path, configuration=config)
-                        
-                        # Clean up temporary HTML file
-                        os.remove(temp_html)
-                        
-                        file_ext = '.pdf'
+                        options = {
+                            'quiet': '',
+                            'enable-local-file-access': None,
+                            'encoding': 'UTF-8'
+                        }
+                        pdfkit.from_file(temp_html, file_path, configuration=config, options=options)
                     except Exception as pdf_error:
-                        # If PDF generation fails, return helpful error
-                        return JsonResponse({
-                            'success': False,
-                            'message': f'Error generating PDF: {str(pdf_error)}'
-                        }, status=500)
+                        if os.path.exists(temp_html):
+                            os.remove(temp_html)
+                        raise pdf_error
+                    finally:
+                        # Clean up temporary HTML file
+                        if os.path.exists(temp_html):
+                            os.remove(temp_html)
                 
                 elif format == 'csv':
-                    file_path = os.path.join(export_dir, f'{filename}.csv')
+                    file_ext = '.csv'
+                    file_path = os.path.join(export_dir, f'{filename}{file_ext}')
                     with open(file_path, 'w', newline='') as csvfile:
                         writer = csv.DictWriter(csvfile, fieldnames=data[0].keys())
                         writer.writeheader()
                         writer.writerows(data)
-                    file_ext = '.csv'
+                    
                 elif format == 'json':
-                    file_path = os.path.join(export_dir, f'{filename}.json')
+                    file_ext = '.json'
+                    file_path = os.path.join(export_dir, f'{filename}{file_ext}')
                     with open(file_path, 'w') as jsonfile:
                         json.dump(data, jsonfile)
-                    file_ext = '.json'
+                    
                 elif format == 'excel':
-                    file_path = os.path.join(export_dir, f'{filename}.xlsx')
+                    file_ext = '.xlsx'
+                    file_path = os.path.join(export_dir, f'{filename}{file_ext}')
                     df = pd.DataFrame(data)
                     df.to_excel(file_path, index=False)
-                    file_ext = '.xlsx'
+
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Invalid export format selected'
+                    }, status=400)
+
+                # Check if file was created successfully
+                if not os.path.exists(file_path):
+                    raise IOError(f"Failed to create export file: {file_path}")
 
                 # Construct the URL using the MEDIA_URL setting
                 file_url = f'{settings.MEDIA_URL.rstrip("/")}/exports/{filename}{file_ext}'
@@ -2154,18 +2169,21 @@ class ExportGenerateView(View):
                 })
 
             except IOError as e:
+                # Handle file operation errors
                 return JsonResponse({
                     'success': False,
                     'message': f'Error writing file: {str(e)}'
                 }, status=500)
+                
             except Exception as e:
+                # Handle other errors in export generation
                 return JsonResponse({
                     'success': False,
                     'message': f'Error generating export: {str(e)}'
                 }, status=500)
 
         except Exception as e:
-            import traceback
+            # Handle any other errors
             print(f"Export error: {str(e)}")
             print(traceback.format_exc())
             return JsonResponse({

@@ -133,3 +133,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 LOGIN_URL = '/welcome/'  # Redirect unauthenticated users to the Welcome page
+
+# PDF Export settings
+WKHTMLTOPDF_CMD = '/usr/local/bin/wkhtmltopdf-xvfb'

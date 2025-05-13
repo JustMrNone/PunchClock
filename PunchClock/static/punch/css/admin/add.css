@@ -1,0 +1,47 @@
+/* Toast styling */
+.toast-enter {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.toast-leave {
+    animation: fadeOut 0.3s ease-in-out;
+}
+
+/* Profile picture container */
+.profile-pic-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+/* Crop modal */
+.crop-container {
+    max-width: 90%;
+    max-height: 80vh;
+    margin: 0 auto;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-1rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(1rem);
+    }
+}
