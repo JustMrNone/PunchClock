@@ -1822,17 +1822,30 @@ class ExportPreviewView(View):
                 return JsonResponse({
                     'success': False,
                     'message': 'End date must be after start date'
-                }, status=400)
+                }, status=400)            # Get admin's own employee record first
+            admin_employee = None
+            try:
+                admin_employee = Employee.objects.get(user=request.user)
+            except Employee.DoesNotExist:
+                # Create employee record for admin if it doesn't exist
+                department = Department.objects.get_or_create(name="Management")[0]
+                admin_employee = Employee.objects.create(
+                    user=request.user,
+                    admin=request.user,
+                    department=department,
+                    hire_date=timezone.now().date()
+                )
 
-            # Get time entries base query
+            # Get all employees managed by this admin and include admin's record
+            employees = list(Employee.objects.filter(admin=request.user))
+            if admin_employee not in employees:
+                employees.append(admin_employee)
+
+            # Get time entries for all employees including admin
             entries = TimeEntry.objects.filter(
-                date__range=[start_date, end_date]
+                date__range=[start_date, end_date],
+                employee__in=employees
             ).select_related('employee', 'employee__department', 'employee__user')
-
-            # Get employees base query - include both managed employees and admin's own record
-            employees = Employee.objects.filter(
-                Q(admin=request.user) | Q(user=request.user)
-            ).select_related('user', 'department').distinct()
 
             # Apply additional filters
             if filter_type == 'department' and department_id:
@@ -1844,45 +1857,51 @@ class ExportPreviewView(View):
 
             # Group data
             data = []
-            if group_by == 'employee':
+            if group_by == 'employee':                
                 for emp in employees:
                     emp_entries = entries.filter(employee=emp)
+                    total_hours = 0
+                    attendance_rate = 0
+                    
                     if emp_entries.exists():
-                        total_hours = sum(float(entry.total_hours) for entry in emp_entries)
-                        attendance_rate = emp_entries.filter(status='approved').count() / emp_entries.count() * 100 if emp_entries.count() > 0 else 0
-                        # Determine role - if user is the admin, they are a manager
-                        role = 'Manager' if emp.user.is_staff or emp.user == request.user else 'Employee'
-                        # Determine status based on recent activity
-                        has_recent_entry = emp_entries.filter(date=timezone.now().date()).exists()
-                        status = 'Active' if has_recent_entry else 'Inactive'
-                        
-                        data.append({
-                            'employee': emp.full_name,
-                            'role': role,
-                            'department': emp.department.name if emp.department else 'N/A',
-                            'total_hours': round(total_hours, 2),
-                            'attendance_rate': round(attendance_rate, 1),
-                            'status': status
-                        })
+                        total_hours = sum(float(entry.total_hours or 0) for entry in emp_entries)
+                        entry_count = emp_entries.count()
+                        if entry_count > 0:
+                            approved_count = emp_entries.filter(status='approved').count()
+                            attendance_rate = (approved_count / entry_count) * 100
+                    
+                    role = 'Manager' if emp.user.is_staff else 'Employee'
+                    status = 'Active' if emp_entries.exists() else 'Inactive'
+                    data.append({
+                        'employee': emp.full_name,
+                        'role': role,
+                        'department': emp.department.name if emp.department else 'N/A',
+                        'total_hours': round(total_hours, 2),
+                        'attendance_rate': round(attendance_rate, 1),
+                        'status': status
+                    })
 
             elif group_by == 'department':
                 departments = Department.objects.filter(
                     id__in=entries.values_list('employee__department_id', flat=True)
                 ).distinct()
-                
                 for dept in departments:
                     dept_entries = entries.filter(employee__department=dept)
+                    total_hours = 0
+                    avg_hours = 0
+                    employee_count = employees.filter(department=dept).count()
+                    
                     if dept_entries.exists():
-                        total_hours = sum(float(entry.total_hours) for entry in dept_entries)
-                        employee_count = employees.filter(department=dept).count()
-                        avg_hours = total_hours / employee_count if employee_count > 0 else 0
-                        
-                        data.append({
-                            'department': dept.name,
-                            'employee_count': employee_count,
-                            'total_hours': round(total_hours, 2),
-                            'average_hours': round(avg_hours, 2)
-                        })
+                        total_hours = sum(float(entry.total_hours or 0) for entry in dept_entries)
+                        if employee_count > 0:
+                            avg_hours = total_hours / employee_count
+                    
+                    data.append({
+                        'department': dept.name,
+                        'employee_count': employee_count,
+                        'total_hours': round(total_hours, 2),
+                        'average_hours': round(avg_hours, 2)
+                    })
 
             else:  # group by day/week/month
                 date_groups = {}
@@ -1942,52 +1961,78 @@ class ExportGenerateView(View):
             end_date = datetime.strptime(request.POST.get('end_date'), '%Y-%m-%d').date()
             filter_type = request.POST.get('filter_type')
             department_id = request.POST.get('department')
-            employee_id = request.POST.get('employee')            # Get time entries for all employees including both managed employees and admin's own record
+            employee_id = request.POST.get('employee')            # Get admin's own employee record first
+            admin_employee = None
+            try:
+                admin_employee = Employee.objects.get(user=request.user)
+            except Employee.DoesNotExist:
+                # Create employee record for admin if it doesn't exist
+                department = Department.objects.get_or_create(name="Management")[0]
+                admin_employee = Employee.objects.create(
+                    user=request.user,
+                    admin=request.user,
+                    department=department,
+                    hire_date=timezone.now().date()
+                )
+
+            # Get all employees managed by this admin and include admin's record
+            employees = list(Employee.objects.filter(admin=request.user))
+            if admin_employee not in employees:
+                employees.append(admin_employee)
+
+            # Get time entries for all employees including admin
             entries = TimeEntry.objects.filter(
-                date__range=[start_date, end_date]
-            ).filter(
-                Q(employee__admin=request.user) | Q(employee__user=request.user)
+                date__range=[start_date, end_date],
+                employee__in=employees
             ).select_related('employee', 'employee__department', 'employee__user')
 
             # Apply additional filters if needed
             if filter_type == 'department' and department_id:
                 entries = entries.filter(employee__department_id=department_id)
             elif filter_type == 'employee' and employee_id:
-                entries = entries.filter(employee_id=employee_id)
-
-            # Get employees - include both managed employees and admin's own record
-            employees = Employee.objects.filter(
-                Q(admin=request.user) | Q(user=request.user)
-            ).select_related('user', 'department').distinct()
-
-            # Group data if needed
+                entries = entries.filter(employee_id=employee_id)            # employees list is already set above to include both managed employees and admin            # Group data if needed
             data = []
             if group_by == 'employee':
                 for emp in employees:
                     emp_entries = entries.filter(employee=emp)
-                    total_hours = sum(float(entry.total_hours) for entry in emp_entries)
-                    attendance_rate = emp_entries.filter(status='approved').count() / emp_entries.count() * 100
+                    total_hours = 0
+                    attendance_rate = 0
+                    
+                    if emp_entries.exists():
+                        total_hours = sum(float(entry.total_hours or 0) for entry in emp_entries)
+                        entry_count = emp_entries.count()
+                        if entry_count > 0:
+                            approved_count = emp_entries.filter(status='approved').count()
+                            attendance_rate = (approved_count / entry_count) * 100
+                    
                     role = 'Manager' if emp.user.is_staff else 'Employee'
+                    status = 'Active' if emp_entries.exists() else 'Inactive'
                     data.append({
                         'employee': emp.full_name,
                         'role': role,
                         'department': emp.department.name if emp.department else 'N/A',
                         'total_hours': round(total_hours, 2),
                         'attendance_rate': round(attendance_rate, 1),
-                        'status': 'Active'
+                        'status': status
                     })
             elif group_by == 'department':
                 departments = Department.objects.filter(
                     id__in=entries.values_list('employee__department_id', flat=True)
                 ).distinct()
                 for dept in departments:
-                    dept_entries = entries.filter(employee__department=dept)
-                    if dept_entries.exists():
-                        total_hours = sum(float(entry.total_hours) for entry in dept_entries)
-                        avg_hours = total_hours / dept_entries.values('employee').distinct().count()
+                        dept_entries = entries.filter(employee__department=dept)
+                        total_hours = 0
+                        avg_hours = 0
+                        employee_count = dept_entries.values('employee').distinct().count()
+                        
+                        if dept_entries.exists():
+                            total_hours = sum(float(entry.total_hours or 0) for entry in dept_entries)
+                            if employee_count > 0:
+                                avg_hours = total_hours / employee_count
+                        
                         data.append({
                             'department': dept.name,
-                            'employee_count': dept_entries.values('employee').distinct().count(),
+                            'employee_count': employee_count,
                             'total_hours': round(total_hours, 2),
                             'average_hours': round(avg_hours, 2)
                         })
