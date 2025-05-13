@@ -1,0 +1,15 @@
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #f8fafc;
+    }
+    .welcome-btn {
+        transition: all 0.3s ease;
+        transform: scale(1);
+    }
+    .welcome-btn:hover {
+        transform: scale(1.05);
+    }
+    .welcome-btn:active {
+        transform: scale(0.98);
+    }

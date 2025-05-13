@@ -1,3 +1,4 @@
+{% load static %}
 <div class="sidebar w-64 bg-white h-screen shadow-md fixed">
     <div class="p-4 border-b border-gray-200">
         <h1 class="text-xl font-bold text-gray-800">WorkTime Admin</h1>
@@ -5,10 +6,15 @@
     </div>
     <div class="p-4">
         <div class="flex items-center mb-6">
-            <!-- Profile picture with globe/marble styling -->
-            <div id="sidebar-profile-pic" class="w-10 h-10 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden relative border-2 border-white shadow-sm mr-4" style="box-shadow: 0 3px 6px rgba(0,0,0,0.15), inset 0 -2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">
+            <!-- Profile picture with globe/marble styling -->            
+             <div id="sidebar-profile-pic" class="w-10 h-10 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden relative border-2 border-white shadow-sm mr-4" style="box-shadow: 0 3px 6px rgba(0,0,0,0.15), inset 0 -2px 4px rgba(0,0,0,0.1); transition: all 0.3s ease;">
                 <!-- User initials shown when no profile picture -->
-                <span id="sidebar-user-initials" class="text-sm font-bold text-white">{{ request.user.first_name|slice:":1" }}{{ request.user.last_name|slice:":1" }}</span>
+                <span id="sidebar-user-initials" 
+                      class="text-sm font-bold text-white"
+                      data-first-name="{{ request.user.first_name }}"
+                      data-last-name="{{ request.user.last_name }}"
+                      data-username="{{ request.user.username }}">
+                </span>
                 <!-- Profile image container -->
                 <img id="sidebar-profile-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Profile Picture">
             </div>
@@ -59,230 +65,12 @@
             </div>
             <button id="add-timezone" class="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">+</button>
             <div id="additional-timezones" class="mt-4"></div>
-        </div>
+        </div>    <script src="{% static 'punch/js/admin/sidea.js' %}"></script>
+    <script src="{% static 'punch/js/admin/sideb.js' %}"></script>
 
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const additionalTimezonesContainer = document.getElementById('additional-timezones');
-                const addTimezoneButton = document.getElementById('add-timezone');
-
-                addTimezoneButton.addEventListener('click', function() {
-                    const currentTimezones = additionalTimezonesContainer.querySelectorAll('div[data-id]').length;
-                    if (currentTimezones >= 3) {
-                        showPopupMessage('You have reached the maximum of 3 timezones. Please remove one to add another.');
-                        return;
-                    }
-
-                    const timezoneBox = createTimezoneBox();
-                    additionalTimezonesContainer.appendChild(timezoneBox);
-                    saveTimezonesState();
-                });
-
-                function showPopupMessage(message) {
-                    const popup = document.createElement('div');
-                    popup.className = 'fixed bottom-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg';
-                    popup.textContent = message;
-
-                    document.body.appendChild(popup);
-
-                    setTimeout(() => {
-                        popup.style.opacity = '0';
-                        setTimeout(() => popup.remove(), 500);
-                    }, 3000);
-                }
-
-                function createTimezoneBox(savedTimezone = null, id = Date.now()) {
-                    const timezoneBox = document.createElement('div');
-                    timezoneBox.className = 'bg-indigo-50 rounded-lg p-4 text-center shadow-md relative mt-4';
-                    timezoneBox.dataset.id = id;
-
-                    const dropdown = document.createElement('select');
-                    dropdown.className = 'mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
-                    dropdown.innerHTML = `
-                        <option value="">Select Timezone</option>
-                        <option value="UTC">UTC</option>
-                        <option value="Europe/Stockholm">Central European Time (CET - Sweden)</option>
-                        <option value="Asia/Tehran">Iran Standard Time (IRST)</option>
-                        <option value="America/Los_Angeles">Pacific Standard Time (PST)</option>
-                        <option value="America/New_York">Eastern Standard Time (EST)</option>
-                        <option value="America/Chicago">Central Standard Time (CST)</option>
-                        <option value="Europe/London">Greenwich Mean Time (GMT)</option>
-                        <option value="Asia/Kolkata">India Standard Time (IST)</option>
-                        <option value="Asia/Tokyo">Japan Standard Time (JST)</option>
-                        <option value="Australia/Sydney">Australian Eastern Standard Time (AEST)</option>
-                        <option value="Pacific/Auckland">New Zealand Standard Time (NZST)</option>
-                        <option value="Pacific/Honolulu">Hawaii Standard Time (HST)</option>
-                        <option value="America/Anchorage">Alaska Standard Time (AKST)</option>
-                        <option value="Europe/Moscow">Moscow Standard Time (MSK)</option>
-                        <option value="Africa/Johannesburg">South Africa Standard Time (SAST)</option>
-                    `;
-                    dropdown.style.marginTop = '1rem';
-
-                    const timeDisplay = document.createElement('p');
-                    timeDisplay.className = 'text-2xl font-bold text-indigo-600 mt-2';
-                    timeDisplay.textContent = '--:--';
-
-                    const timezoneName = document.createElement('h3');
-                    timezoneName.className = 'text-lg font-semibold text-gray-800';
-                    timezoneName.textContent = 'Alternate Time';
-
-                    const removeButton = document.createElement('button');
-                    removeButton.className = 'absolute top-2 right-2 text-red-600 hover:text-red-800';
-                    removeButton.textContent = '×';
-
-                    const settingsButton = document.createElement('button');
-                    settingsButton.className = 'absolute top-2 left-2 text-gray-600 hover:text-gray-800';
-                    settingsButton.textContent = '⚙';
-
-                    timezoneBox.appendChild(settingsButton);
-                    timezoneBox.appendChild(removeButton);
-                    timezoneBox.appendChild(timezoneName);
-                    timezoneBox.appendChild(timeDisplay);
-
-                    dropdown.addEventListener('change', function() {
-                        const selectedTimezone = this.value;
-                        if (selectedTimezone) {
-                            timezoneName.textContent = selectedTimezone;
-                            updateTime(selectedTimezone, timeDisplay);
-                            saveTimezonesState();
-                        }
-                    });
-
-                    settingsButton.addEventListener('click', function() {
-                        if (timezoneBox.contains(dropdown)) {
-                            timezoneBox.replaceChild(timezoneName, dropdown);
-                        } else {
-                            timezoneBox.replaceChild(dropdown, timezoneName);
-                            const savedTimezone = dropdown.value;
-                            if (savedTimezone) {
-                                dropdown.value = savedTimezone;
-                            }
-                        }
-                    });
-
-                    removeButton.addEventListener('click', function() {
-                        additionalTimezonesContainer.removeChild(timezoneBox);
-                        saveTimezonesState();
-                    });
-
-                    if (savedTimezone) {
-                        timezoneName.textContent = savedTimezone;
-                        dropdown.value = savedTimezone;
-                        updateTime(savedTimezone, timeDisplay);
-                    }
-
-                    return timezoneBox;
-                }
-
-                function saveTimezonesState() {
-                    const timezones = [];
-                    additionalTimezonesContainer.querySelectorAll('div[data-id]').forEach(box => {
-                        const id = box.dataset.id;
-                        const timezone = box.querySelector('select') ? box.querySelector('select').value : box.querySelector('h3').textContent;
-                        if (timezone) {
-                            timezones.push({ id, timezone });
-                        }
-                    });
-                    localStorage.setItem('timezones', JSON.stringify(timezones));
-                }
-
-                function restoreTimezonesState() {
-                    const savedTimezones = JSON.parse(localStorage.getItem('timezones') || '[]');
-                    savedTimezones.forEach(({ id, timezone }) => {
-                        const timezoneBox = createTimezoneBox(timezone, id);
-                        additionalTimezonesContainer.appendChild(timezoneBox);
-                    });
-                }
-
-                function updateTime(timezone, element) {
-                    const now = new Date().toLocaleString('en-US', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hour12: true });
-                    element.textContent = now;
-                }
-
-                restoreTimezonesState();
-
-                setInterval(function() {
-                    const timeDisplays = additionalTimezonesContainer.querySelectorAll('p');
-                    timeDisplays.forEach(display => {
-                        const timezone = display.previousElementSibling.textContent;
-                        if (timezone) {
-                            updateTime(timezone, display);
-                        }
-                    });
-                }, 60000);
-            });
-        </script>
     <div class="fixed bottom-0 left-0 p-6">
         <button class="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
             <a href="{% url 'PunchClock:logout' %}" class="text-white">Logout</a>
         </button>
     </div>
 </div>
-
-<!-- Add script to load profile picture in sidebar -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const sidebarUserInitials = document.getElementById('sidebar-user-initials');
-        const sidebarProfileImage = document.getElementById('sidebar-profile-image');
-        const sidebarProfilePic = document.getElementById('sidebar-profile-pic');
-        
-        // Set initial background and styling for the initials display
-        sidebarProfilePic.classList.add('bg-indigo-500');
-        
-        // Handle user initial generation
-        function getInitials() {
-            const firstName = '{{ request.user.first_name }}';
-            const lastName = '{{ request.user.last_name }}';
-            
-            if (firstName && lastName) {
-                return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-            } else if (firstName) {
-                return firstName.charAt(0).toUpperCase();
-            } else if (lastName) {
-                return lastName.charAt(0).toUpperCase();
-            } else {
-                return '{{ request.user.username|slice:":2" }}'.toUpperCase();
-            }
-        }
-        
-        // Set user initials
-        if (sidebarUserInitials.textContent.trim() === '') {
-            sidebarUserInitials.textContent = getInitials();
-        }
-        
-        // Fetch profile picture from server
-        function fetchProfilePicture() {
-            fetch('/api/profile-picture/get/')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.has_image) {
-                        // Update UI with the server image
-                        sidebarUserInitials.classList.add('hidden');
-                        sidebarProfileImage.classList.remove('hidden');
-                        sidebarProfileImage.src = data.image_url;
-                        // Remove background color when showing the image
-                        sidebarProfilePic.classList.remove('bg-gradient-to-b', 'from-indigo-400', 'to-indigo-600');
-                        sidebarProfilePic.classList.add('bg-white');
-                    } else {
-                        // Ensure the initials are shown with proper background
-                        sidebarUserInitials.classList.remove('hidden');
-                        sidebarProfileImage.classList.add('hidden');
-                        // Make sure the background gradient is applied
-                        sidebarProfilePic.classList.remove('bg-white');
-                        sidebarProfilePic.classList.add('bg-indigo-500');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching profile picture:', error);
-                    // On error, ensure the initials are shown with proper background
-                    sidebarUserInitials.classList.remove('hidden');
-                    sidebarProfileImage.classList.add('hidden');
-                    sidebarProfilePic.classList.remove('bg-white');
-                    sidebarProfilePic.classList.add('bg-indigo-500');
-                });
-        }
-        
-        // Load profile picture when page loads
-        fetchProfilePicture();
-    });
-</script>

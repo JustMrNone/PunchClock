@@ -1,0 +1,154 @@
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    
+    /* Base theme variables */
+    :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f9fafb;
+        --bg-card: #ffffff;
+        --bg-hover: #f3f4ff;
+        --bg-active: #e0e7ff;
+        --bg-accent: #eef2ff;
+        --text-primary: #111827;
+        --text-secondary: #4b5563;
+        --text-muted: #6b7280;
+        --border-color: #e5e7eb;
+        --input-bg: #ffffff;
+        --input-border: #d1d5db;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+        --success-bg: #dcfce7;
+        --success-text: #166534;
+        --warning-bg: #fef9c3;
+        --warning-text: #854d0e;
+        --error-bg: #fee2e2;
+        --error-text: #991b1b;
+    }
+
+    /* Dark mode variables */
+    [data-theme='dark'] {
+        --bg-primary: #121212;
+        --bg-secondary: #1e1e1e;
+        --bg-card: #242424;
+        --bg-hover: #333333;
+        --bg-active: #444444;
+        --text-primary: #ffffff;
+        --text-secondary: #cccccc;
+        --text-muted: #999999;
+        --border-color: #444444;
+        --input-bg: #1e1e1e;
+        --input-border: #555555;
+        --shadow-color: rgba(0, 0, 0, 0.7);
+        --success-bg: #14532d;
+        --success-text: #a7f3d0;
+        --warning-bg: #78350f;
+        --warning-text: #fcd34d;
+        --error-bg: #7f1d1d;
+        --error-text: #fca5a5;
+    }
+    
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    
+    .settings-card {
+        background-color: var(--bg-card) !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+    }
+    
+    .settings-card:hover {
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .profile-picture-container {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        margin: 0 auto;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        cursor: pointer;
+    }
+    
+    .profile-picture {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .profile-picture-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.3);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .profile-picture-container:hover .profile-picture-overlay {
+        opacity: 1;
+    }
+    
+    .profile-initials {
+        font-size: 3rem;
+        font-weight: bold;
+        color: white;
+    }
+    
+    .theme-option {
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background-color: var(--bg-hover) !important;
+    }
+    
+    .theme-option.selected {
+        border-color: #4f46e5;
+        transform: scale(1.05);
+    }
+    
+    /* Dark mode overrides */
+    [data-theme='dark'] .bg-white {
+        background-color: var(--bg-card) !important;
+    }
+    
+    [data-theme='dark'] .bg-gray-50 {
+        background-color: var(--bg-hover) !important;
+    }
+    
+    [data-theme='dark'] .text-gray-800 {
+        color: var(--text-primary) !important;
+    }
+    
+    [data-theme='dark'] .text-gray-600, 
+    [data-theme='dark'] .text-gray-700 {
+        color: var(--text-secondary) !important;
+    }
+    
+    [data-theme='dark'] .text-gray-500 {
+        color: var(--text-muted) !important;
+    }
+    
+    [data-theme='dark'] .border-gray-200, 
+    [data-theme='dark'] .border-gray-300,
+    [data-theme='dark'] .border-gray-100 {
+        border-color: var(--border-color) !important;
+    }
+    
+    /* Form inputs */
+    [data-theme='dark'] input, 
+    [data-theme='dark'] select, 
+    [data-theme='dark'] textarea {
+        background-color: var(--input-bg) !important;
+        border-color: var(--input-border) !important;
+        color: var(--text-primary) !important;
+    }

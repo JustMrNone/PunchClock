@@ -1,27 +1,11 @@
 {% extends 'base.html' %}
-
+{% load static %}
 {% block title %}WorkTime Tracker | Welcome{% endblock %}
 
 {% block extra_head %}
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
-    body {
-        font-family: 'Poppins', sans-serif;
-        background-color: #f8fafc;
-    }
-    .welcome-btn {
-        transition: all 0.3s ease;
-        transform: scale(1);
-    }
-    .welcome-btn:hover {
-        transform: scale(1.05);
-    }
-    .welcome-btn:active {
-        transform: scale(0.98);
-    }
-</style>
+<link rel="stylesheet" href="{% static 'punch/css/punchcard/welcome.css' %}">
 {% endblock %}
 
 {% block content %}

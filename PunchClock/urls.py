@@ -33,10 +33,7 @@ urlpatterns = [
     path('api/personal-notes/get/', calendar_views.GetPersonalNotesView.as_view(), name='get_personal_notes'),    path('api/personal-notes/update/', calendar_views.UpdatePersonalNotesView.as_view(), name='update_personal_notes'),
     path('api/personal-notes/delete/', calendar_views.DeletePersonalNoteView.as_view(), name='delete_personal_notes'),
     
-    # UpdateCompanyNameView
-    # GetCompanySettingsView
-    # UpdateCompanySettingsView
-    # Company settings
+
     path('update-company-name/', company_views.UpdateCompanyNameView.as_view(), name='update_company_name'),
     path('api/company-settings/', company_views.GetCompanySettingsView.as_view(), name='get_company_settings'),
     path('api/company-settings/update/', company_views.UpdateCompanySettingsView.as_view(), name='update_company_settings'),

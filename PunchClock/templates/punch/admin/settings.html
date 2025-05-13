@@ -9,9 +9,13 @@
     <div class="flex items-center justify-between mb-6 bg-white rounded-xl p-6 shadow-md mt-8">
         <div class="flex items-center">
             <!-- Updated profile picture container with globe-like styling -->
-            <div id="profile-pic-container" class="w-16 h-16 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-gray-600 font-bold overflow-hidden relative border-2 border-white shadow-lg  bg-indigo-500" style="box-shadow: 0 6px 12px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">
-                <!-- User initials shown when no profile picture -->
-                <span id="user-initials" class="text-xl font-bold text-white">{{ request.user.first_name|slice:":1" }}{{ request.user.last_name|slice:":1" }}</span>
+            <div id="profile-pic-container" class="w-16 h-16 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-gray-600 font-bold overflow-hidden relative border-2 border-white shadow-lg  bg-indigo-500" style="box-shadow: 0 6px 12px rgba(0,0,0,0.15), inset 0 -3px 6px rgba(0,0,0,0.1); transition: all 0.3s ease;">                <!-- User initials shown when no profile picture -->
+                <span id="user-initials" 
+                      class="text-xl font-bold text-white"
+                      data-first-name="{{ request.user.first_name }}"
+                      data-last-name="{{ request.user.last_name }}"
+                      data-username="{{ request.user.username }}">
+                </span>
                 <!-- Profile image container -->
                 <img id="profile-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Profile Picture">
                 

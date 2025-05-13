@@ -1,0 +1,122 @@
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+    
+    /* Base theme variables */
+    :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f9fafb;
+        --bg-card: #ffffff;
+        --bg-hover: #f3f4ff;
+        --bg-active: #e0e7ff;
+        --bg-accent: #eef2ff;
+        --text-primary: #111827;
+        --text-secondary: #4b5563;
+        --text-muted: #6b7280;
+        --border-color: #e5e7eb;
+        --input-bg: #ffffff;
+        --input-border: #d1d5db;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+        --success-bg: #dcfce7;
+        --success-text: #166534;
+        --warning-bg: #fef9c3;
+        --warning-text: #854d0e;
+        --error-bg: #fee2e2;
+        --error-text: #991b1b;
+    }
+
+    /* Dark mode variables */
+    [data-theme='dark'] {
+        --bg-primary: #121212;
+        --bg-secondary: #1e1e1e;
+        --bg-card: #242424;
+        --bg-hover: #333333;
+        --bg-active: #444444;
+        --text-primary: #ffffff;
+        --text-secondary: #cccccc;
+        --text-muted: #999999;
+        --border-color: #444444;
+        --input-bg: #1e1e1e;
+        --input-border: #555555;
+        --shadow-color: rgba(0, 0, 0, 0.7);
+        --success-bg: #14532d;
+        --success-text: #a7f3d0;
+        --warning-bg: #78350f;
+        --warning-text: #fcd34d;
+        --error-bg: #7f1d1d;
+        --error-text: #fca5a5;
+    }
+    
+    body {
+        font-family: 'Poppins', sans-serif;
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    
+    .bg-white {
+        background-color: var(--bg-card) !important;
+    }
+    
+    .text-gray-800 {
+        color: var(--text-primary) !important;
+    }
+    
+    .text-gray-600, .text-gray-700 {
+        color: var(--text-secondary) !important;
+    }
+    
+    .text-gray-500 {
+        color: var(--text-muted) !important;
+    }
+    
+    .border-gray-200, .border-gray-300 {
+        border-color: var(--border-color) !important;
+    }
+    
+    .bg-gray-50, .hover\:bg-gray-50:hover {
+        background-color: var(--bg-hover) !important;
+    }
+    
+    .bg-gray-100, .hover\:bg-gray-100:hover {
+        background-color: var(--bg-accent) !important;
+    }
+    
+    .hover\:bg-gray-200:hover {
+        background-color: var(--bg-active) !important;
+    }
+    
+    /* Calendar specific styles */
+    [data-theme='dark'] .calendar-day {
+        background-color: var(--bg-card) !important;
+        border-color: var(--border-color) !important;
+    }
+    
+    [data-theme='dark'] .calendar-day.bg-red-50 {
+        background-color: var(--error-bg) !important;
+    }
+    
+    [data-theme='dark'] #context-menu {
+        background-color: var(--bg-card) !important;
+    }
+    
+    [data-theme='dark'] #custom-modal .bg-white {
+        background-color: var(--bg-card) !important;
+    }
+    
+    /* Fix calendar navigation buttons in dark mode */
+    [data-theme='dark'] .bg-gray-100,
+    [data-theme='dark'] button.bg-gray-100 {
+        background-color: var(--bg-hover) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    [data-theme='dark'] .hover\:bg-gray-200:hover,
+    [data-theme='dark'] button.hover\:bg-gray-200:hover {
+        background-color: var(--bg-active) !important;
+    }
+    
+    /* Fix calendar icon */
+    [data-theme='dark'] .fa-calendar-alt,
+    [data-theme='dark'] .fa-chevron-left,
+    [data-theme='dark'] .fa-chevron-right {
+        color: var(--text-primary) !important;
+    }
