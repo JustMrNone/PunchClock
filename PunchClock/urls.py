@@ -37,12 +37,17 @@ urlpatterns = [
     path('update-company-name/', company_views.UpdateCompanyNameView.as_view(), name='update_company_name'),
     path('api/company-settings/', company_views.GetCompanySettingsView.as_view(), name='get_company_settings'),
     path('api/company-settings/update/', company_views.UpdateCompanySettingsView.as_view(), name='update_company_settings'),
+    
+    # Company logo endpoints
+    path('api/company-logo/', company_views.GetCompanyLogoView.as_view(), name='get_company_logo'),
+    path('api/company-logo/upload/', company_views.UploadCompanyLogoView.as_view(), name='upload_company_logo'),
+    path('api/company-logo/delete/', company_views.DeleteCompanyLogoView.as_view(), name='delete_company_logo'),
 
     # Profile picture endpoints
     path('api/profile-picture/', profile_views.ProfilePictureView.as_view(), name='profile_picture'),
-    path('api/profile-picture/get/', profile_views.GetProfilePictureView.as_view(), name='get_profile_picture'),
-      # Employee profile picture endpoints
+    path('api/profile-picture/get/', profile_views.GetProfilePictureView.as_view(), name='get_profile_picture'),# Employee profile picture endpoints    
     path('api/employee-profile-picture/', profile_views.EmployeeProfilePictureView.as_view(), name='employee_profile_picture'),
+    path('api/employee-profile-picture/delete/<int:employee_id>/', profile_views.DeleteEmployeeProfilePictureView.as_view(), name='delete_employee_profile_picture'),
     path('api/employees/<int:employee_id>/profile-picture/', profile_views.GetEmployeeProfilePictureView.as_view(), name='get_employee_profile_picture'),
 
     # Time tracking endpoints

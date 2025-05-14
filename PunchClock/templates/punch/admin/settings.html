@@ -106,6 +106,36 @@
     <div class="bg-white rounded-xl p-6 shadow-md">
         <h3 class="text-xl font-semibold text-gray-800 mb-4">General Settings</h3>
         
+        <!-- Company Logo Section -->
+        <div class="mb-6 pb-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-lg font-medium text-gray-800 mb-1">Company Logo</h4>
+                    <p class="text-sm text-gray-600">Upload your company logo for branding</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <input type="file" id="company-logo-input" class="hidden" accept="image/*">
+                    <button id="upload-logo-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                        Change Logo
+                    </button>
+                    <button id="remove-logo-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 hidden">
+                        Remove Logo
+                    </button>
+                </div>
+            </div>
+            <div class="mt-4 flex justify-center">
+                <div class="w-64 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                    <!-- Logo placeholder shown when no logo is uploaded -->
+                    <div id="company-logo-placeholder" class="text-center">
+                        <i class="fas fa-building text-4xl text-gray-400 mb-2"></i>
+                        <p class="text-sm text-gray-500">No logo uploaded</p>
+                    </div>
+                    <!-- Company logo image -->
+                    <img id="company-logo-image" class="max-w-full max-h-full object-contain hidden" src="" alt="Company Logo">
+                </div>
+            </div>
+        </div>
+
         <form>
             <div class="mb-4">
                 <label for="company-name" class="block text-sm font-medium text-gray-700">Company Name</label>
@@ -237,12 +267,18 @@
                     <h4 id="employee-name-display" class="text-lg font-medium text-gray-800 mb-3"></h4>
                     
                     <!-- Employee profile picture container -->
-                    <div class="mb-4">
-                        <div id="employee-pic-container" class="w-24 h-24 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden relative border-2 border-white shadow-lg">
-                            <!-- Employee initials shown when no profile picture -->
-                            <span id="employee-initials" class="text-2xl font-bold text-white">??</span>
+                    <div class="mb-4">                        <div id="employee-pic-container" class="w-24 h-24 rounded-full bg-gradient-to-b from-indigo-400 to-indigo-600 flex items-center justify-center text-white font-bold overflow-hidden relative border-2 border-white shadow-lg">
+                            <!-- Employee initials shown when no profile picture -->                            <div id="employee-initials" class="w-full h-full flex items-center justify-center">
+                                <span id="initials-text" class="text-2xl font-bold text-white">??</span>
+                            </div>
                             <!-- Employee profile image -->
-                            <img id="employee-profile-image" class="w-full h-full object-cover hidden rounded-full" src="" alt="Employee Profile Picture">
+                            <img id="employee-profile-image" class="w-full h-full object-cover hidden rounded-full absolute top-0 left-0" src="" alt="Employee Profile Picture">
+                            <!-- Default profile icon (shown when no image but alt text would show) -->
+                            <div id="default-profile-icon" class="w-full h-full object-cover hidden absolute top-0 left-0 bg-gray-100 flex items-center justify-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
                         </div>
                     </div>
                     
@@ -350,7 +386,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {    // Default profile icon SVG path (used for programmatically created icons)
+    const defaultProfileIconSvg = `
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+        </svg>
+    `;
+      // Configuration options
+    const useIconInsteadOfInitials = true; // Set to true to use the default icon instead of initials
+    
     // Profile picture functionality
     const uploadBtn = document.getElementById('upload-pic-btn');
     const fileInput = document.getElementById('profile-pic-input');
@@ -1213,10 +1257,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const employeeDepartmentFilter = document.getElementById('employee-department-filter');
     const employeeSelectFilter = document.getElementById('employee-select-filter');
     const employeeProfileSection = document.getElementById('employee-profile-section');
-    const employeeNameDisplay = document.getElementById('employee-name-display');
-    const employeePicContainer = document.getElementById('employee-pic-container');
+    const employeeNameDisplay = document.getElementById('employee-name-display');    const employeePicContainer = document.getElementById('employee-pic-container');
     const employeeInitials = document.getElementById('employee-initials'); // Define the missing variable
     const employeeProfileImage = document.getElementById('employee-profile-image'); // Define the missing variable
+    const defaultProfileIcon = document.getElementById('default-profile-icon'); // Default profile icon element
     const employeePicInput = document.getElementById('employee-pic-input');
     const uploadEmployeePicBtn = document.getElementById('upload-employee-pic-btn');
     const removeEmployeePicBtn = document.getElementById('remove-employee-pic-btn');
@@ -1309,8 +1353,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         }
     });
-    
-    // Handle employee selection change
+      // Handle employee selection change
     employeeSelectFilter.addEventListener('change', function() {
         const employeeId = this.value;
         
@@ -1324,10 +1367,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Set employee name display
         employeeNameDisplay.textContent = currentEmployeeName;
-        
-        // Show employee profile section
+          // Show employee profile section
         employeeProfileSection.classList.remove('hidden');
-        
+            // Reset the profile display state
+        if (useIconInsteadOfInitials) {
+            employeeInitials.classList.add('hidden');
+            defaultProfileIcon.classList.remove('hidden');
+        } else {
+            employeeInitials.classList.remove('hidden');
+            defaultProfileIcon.classList.add('hidden');
+        }
+        employeeProfileImage.classList.add('hidden');
+        removeEmployeePicBtn.classList.add('hidden');
+          
         // Get employee initials
         const nameParts = currentEmployeeName.split(' ');
         let initials = '';
@@ -1339,38 +1391,77 @@ document.addEventListener('DOMContentLoaded', function() {
             initials = '??';
         }
         
-        employeeInitials.textContent = initials;
+        // Update the initials text
+        const initialsTextElement = document.getElementById('initials-text');
+        if (initialsTextElement) {
+            initialsTextElement.textContent = initials;
+        }
         
         // Fetch employee's profile picture
         fetchEmployeeProfilePicture(employeeId);
     });
-    
-    // Fetch employee profile picture
+      // Fetch employee profile picture
     function fetchEmployeeProfilePicture(employeeId) {
         fetch(`/api/employees/${employeeId}/profile-picture/`)
             .then(response => response.json())
-            .then(data => {
-                if (data.success && data.has_image) {
+            .then(data => {                if (data.success && data.has_image) {
                     // Show profile image
                     employeeInitials.classList.add('hidden');
+                    defaultProfileIcon.classList.add('hidden');
                     employeeProfileImage.classList.remove('hidden');
                     employeeProfileImage.src = data.image_url;
-                    removeEmployeePicBtn.classList.remove('hidden');
-                } else {
-                    // Show initials
-                    employeeInitials.classList.remove('hidden');
+                    removeEmployeePicBtn.classList.remove('hidden');                } else {
+                    // Show either initials or default icon based on configuration
+                    if (useIconInsteadOfInitials) {
+                        employeeInitials.classList.add('hidden');
+                        defaultProfileIcon.classList.remove('hidden');
+                    } else {
+                        employeeInitials.classList.remove('hidden');
+                        defaultProfileIcon.classList.add('hidden');
+                    }
+                    
                     employeeProfileImage.classList.add('hidden');
                     employeeProfileImage.src = '';
                     removeEmployeePicBtn.classList.add('hidden');
+                    
+                    // Make sure initials are displayed
+                    const nameParts = currentEmployeeName.split(' ');
+                    let initials = '';
+                    if (nameParts.length >= 2) {
+                        initials = (nameParts[0].charAt(0) + nameParts[1].charAt(0)).toUpperCase();
+                    } else if (nameParts.length === 1) {
+                        initials = nameParts[0].charAt(0).toUpperCase();
+                    } else {
+                        initials = '??';
+                    }
+                    document.getElementById('initials-text').textContent = initials;
                 }
             })
-            .catch(error => {
-                console.error('Error fetching employee profile picture:', error);
-                // Show initials on error
-                employeeInitials.classList.remove('hidden');
+            .catch(error => {                console.error('Error fetching employee profile picture:', error);
+                // Show either initials or default icon based on configuration
+                if (useIconInsteadOfInitials) {
+                    employeeInitials.classList.add('hidden');
+                    defaultProfileIcon.classList.remove('hidden');
+                } else {
+                    employeeInitials.classList.remove('hidden');
+                    defaultProfileIcon.classList.add('hidden');
+                }
+                
                 employeeProfileImage.classList.add('hidden');
                 employeeProfileImage.src = '';
                 removeEmployeePicBtn.classList.add('hidden');
+                
+                // Make sure initials are displayed
+                const nameParts = currentEmployeeName.split(' ');
+                let initials = '';
+                if (nameParts.length >= 2) {
+                    initials = (nameParts[0].charAt(0) + nameParts[1].charAt(0)).toUpperCase();
+                } else if (nameParts.length === 1) {
+                    initials = nameParts[0].charAt(0).toUpperCase();
+                } else {
+                    initials = '??';
+                }
+                document.getElementById('initials-text').textContent = initials;
             });
     }
     
@@ -1436,9 +1527,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             const croppedImage = croppedCanvas.toDataURL('image/png');
-            
-            // Update UI first for better user experience
+              // Update UI first for better user experience
             employeeInitials.classList.add('hidden');
+            defaultProfileIcon.classList.add('hidden');
             employeeProfileImage.classList.remove('hidden');
             employeeProfileImage.src = croppedImage;
             removeEmployeePicBtn.classList.remove('hidden');
@@ -1449,9 +1540,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Upload to server
             uploadEmployeeProfilePicture(croppedImage);
         }
-    });
-    
-    // Upload employee profile picture to server
+    });    // Upload employee profile picture to server
     function uploadEmployeeProfilePicture(imageData) {
         if (!currentEmployeeId) {
             showNotification('No employee selected', 'error');
@@ -1461,17 +1550,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading notification
         showNotification('Uploading employee profile picture...', 'info');
         
-        // Send to server - Note: Using JSON format for this endpoint, not FormData
+        // Use URLSearchParams for form data (similar to settings user page)
+        const params = new URLSearchParams();
+        params.append('employee_id', currentEmployeeId);
+        params.append('image_data', imageData);
+        
         fetch('/api/employee-profile-picture/', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({
-                employee_id: currentEmployeeId,
-                image_data: imageData
-            })
+            body: params
         })
         .then(response => response.json())
         .then(data => {
@@ -1513,11 +1603,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading
         employeeDeleteBtnText.classList.add('hidden');
         employeeDeleteBtnLoading.classList.remove('hidden');
-        
-        // Call server to delete the employee's profile picture
-        fetch(`/api/employees/${currentEmployeeId}/profile-picture/`, {
-            method: 'DELETE',
+          // Call server to delete the employee's profile picture
+        fetch(`/api/employee-profile-picture/delete/${currentEmployeeId}/`, {
+            method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             }
         })
@@ -1525,10 +1615,14 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 // Close modal
-                closeEmployeeDeleteModal();
-                
-                // Update UI
-                employeeInitials.classList.remove('hidden');
+                closeEmployeeDeleteModal();                // Update UI based on configuration
+                if (useIconInsteadOfInitials) {
+                    employeeInitials.classList.add('hidden');
+                    defaultProfileIcon.classList.remove('hidden');
+                } else {
+                    employeeInitials.classList.remove('hidden');
+                    defaultProfileIcon.classList.add('hidden');
+                }
                 employeeProfileImage.classList.add('hidden');
                 employeeProfileImage.src = '';
                 removeEmployeePicBtn.classList.add('hidden');
@@ -1541,9 +1635,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error removing employee profile picture:', error);
-            employeeDeleteStatus.classList.remove('hidden');
-            employeeDeleteStatus.textContent = 'An error occurred while removing the employee profile picture.';
+            console.error('Error removing employee profile picture:', error);            employeeDeleteStatus.classList.remove('hidden');
+            employeeDeleteStatus.textContent = 'Failed to remove the profile picture. Please try again. If the problem persists, contact support.';
             employeeDeleteStatus.classList.add('bg-red-100', 'text-red-800', 'p-3', 'rounded-md');
         })
         .finally(() => {
@@ -1553,6 +1646,118 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Load departments for filter on page load
-    loadDepartmentsForFilter();
+    loadDepartmentsForFilter();    // --- Company Logo Functionality ---
+    const logoInput = document.getElementById('company-logo-input');
+    const uploadLogoBtn = document.getElementById('upload-logo-btn');
+    const removeLogoBtn = document.getElementById('remove-logo-btn');
+    const logoImage = document.getElementById('company-logo-image');
+    const logoPlaceholder = document.getElementById('company-logo-placeholder');
+
+    // Function to fetch and display company logo
+    function fetchAndDisplayLogo() {
+        fetch('/api/company-logo/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.has_logo) {
+                    logoImage.src = data.logo_url + '?t=' + new Date().getTime(); // Prevent caching
+                    logoImage.classList.remove('hidden');
+                    logoPlaceholder.classList.add('hidden');
+                    removeLogoBtn.classList.remove('hidden');
+                } else {
+                    logoImage.classList.add('hidden');
+                    logoPlaceholder.classList.remove('hidden');
+                    removeLogoBtn.classList.add('hidden');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching logo:', error);
+                logoImage.classList.add('hidden');
+                logoPlaceholder.classList.remove('hidden');
+                removeLogoBtn.classList.add('hidden');
+            });
+    }
+
+    // Initial load
+    fetchAndDisplayLogo();
+
+    // Open file dialog on upload button click
+    uploadLogoBtn.addEventListener('click', function() {
+        logoInput.click();
+    });
+
+    logoInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const formData = new FormData();
+                formData.append('logo', file);
+                
+                // First update UI optimistically
+                logoImage.src = e.target.result;
+                logoImage.classList.remove('hidden');
+                logoPlaceholder.classList.add('hidden');
+                removeLogoBtn.classList.remove('hidden');
+
+                // Then upload to server
+                fetch('/api/company-logo/upload/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.logo_url) {
+                        // Update with the server URL
+                        logoImage.src = data.logo_url + '?t=' + new Date().getTime(); // Prevent caching
+                        showNotification('Company logo updated successfully.');
+                    } else {
+                        showNotification(data.message || 'Failed to upload logo.', 'error');
+                        // Revert UI on failure
+                        logoImage.classList.add('hidden');
+                        logoPlaceholder.classList.remove('hidden');
+                        removeLogoBtn.classList.add('hidden');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('An error occurred while uploading the logo.', 'error');
+                    // Revert UI on error
+                    logoImage.classList.add('hidden');
+                    logoPlaceholder.classList.remove('hidden');
+                    removeLogoBtn.classList.add('hidden');
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Remove logo using the correct endpoint
+    removeLogoBtn.addEventListener('click', function() {
+        fetch('/api/company-logo/delete/', {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                logoImage.classList.add('hidden');
+                logoImage.src = '';
+                logoPlaceholder.classList.remove('hidden');
+                removeLogoBtn.classList.add('hidden');
+                showNotification('Company logo removed successfully.');
+            } else {
+                showNotification(data.message || 'Failed to remove logo.', 'error');
+            }
+        })
+        .catch(() => {
+            showNotification('An error occurred while removing the logo.', 'error');
+        });
+    });
 });
 </script>

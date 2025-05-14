@@ -22,8 +22,35 @@ document.addEventListener('DOMContentLoaded', function() {
     const deleteBtnText = document.getElementById('delete-btn-text');
     const deleteBtnLoading = document.getElementById('delete-btn-loading');
     
+    // Company logo functionality
+    const uploadLogoBtn = document.getElementById('upload-logo-btn');
+    const logoInput = document.getElementById('company-logo-input');
+    const logoPlaceholder = document.getElementById('company-logo-placeholder');
+    const logoImage = document.getElementById('company-logo-image');
+    const removeLogoBtn = document.getElementById('remove-logo-btn');
+    const logoCropModal = document.getElementById('logo-crop-modal');
+    const logoCropContainer = document.getElementById('logo-crop-container');
+    const closeLogoCropModalBtn = document.getElementById('close-logo-crop-modal-btn');
+    const cancelLogoCropBtn = document.getElementById('cancel-logo-crop-btn');
+    const applyLogoCropBtn = document.getElementById('apply-logo-crop-btn');
+    
+    // Logo delete confirmation modal elements
+    const logoDeleteModal = document.getElementById('logo-delete-modal');
+    const closeLogoDeleteModalBtn = document.getElementById('close-logo-delete-modal-btn');
+    const cancelLogoDeleteBtn = document.getElementById('cancel-logo-delete-btn');
+    const confirmLogoDeleteBtn = document.getElementById('confirm-logo-delete-btn');
+    const logoDeletePreviewImage = document.getElementById('logo-delete-preview-image');
+    const logoDeleteStatus = document.getElementById('logo-delete-status');
+    const logoDeleteModalContent = document.getElementById('logo-delete-modal-content');
+    const logoDeleteBtnText = document.getElementById('logo-delete-btn-text');
+    const logoDeleteBtnLoading = document.getElementById('logo-delete-btn-loading');
+    
     let cropper;
-    let currentImageUrl = null;    // Handle user initial generation
+    let logoCropper;
+    let currentImageUrl = null;
+    let currentLogoUrl = null;
+
+    // Handle user initial generation
     function getInitials() {
         const userInitialsElement = document.getElementById('user-initials');
         const firstName = userInitialsElement.dataset.firstName;
@@ -250,37 +277,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Upload profile picture to server
-    function uploadProfilePicture(imageData) {
-        // Show loading notification
-        showNotification('Uploading profile picture...', 'info');
-        
-        // Create form data for the upload
-        const formData = new FormData();
-        formData.append('image_data', imageData);
-        
-        // Send to server
-        fetch('/api/profile-picture/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
+function uploadProfilePicture(imageData) {
+    // Show loading notification
+    showNotification('Uploading profile picture...', 'info');
+    
+    // Create FormData for the request
+    const formData = new FormData();
+    formData.append('image_data', imageData);
+    
+    // Send request to server
+    fetch('/api/profile-picture/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Server responded with status: ' + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Show success notification
+            showNotification('Profile picture uploaded successfully!', 'success');
+            
+            // Make sure remove button is visible
+            const removeProfilePictureButton = document.getElementById('removeProfilePicture');
+            if (removeProfilePictureButton) {
+                removeProfilePictureButton.classList.remove('hidden');
             }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                currentImageUrl = data.image_url;
-                profileImage.src = data.image_url; // Use the server URL
-                showNotification('Profile picture uploaded successfully.');
-            } else {
-                showNotification(data.message || 'Failed to upload profile picture.', false);
-            }
-        })
-        .catch(error => {
-            console.error('Error uploading profile picture:', error);
-            showNotification('An error occurred while uploading the profile picture.', false);
-        });
-    }
+        } else {
+            showNotification(data.message || 'Failed to upload profile picture', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error uploading profile picture:', error);
+        showNotification('An error occurred while uploading the profile picture', 'error');
+    });
+}
+
     
     // Create notification container
     const notificationContainer = document.createElement('div');
@@ -1102,8 +1140,7 @@ document.addEventListener('DOMContentLoaded', function() {
             uploadEmployeeProfilePicture(croppedImage);
         }
     });
-    
-    // Upload employee profile picture to server
+      // Upload employee profile picture to server
     function uploadEmployeeProfilePicture(imageData) {
         if (!currentEmployeeId) {
             showNotification('No employee selected', 'error');
@@ -1113,17 +1150,18 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading notification
         showNotification('Uploading employee profile picture...', 'info');
         
-        // Send to server - Note: Using JSON format for this endpoint, not FormData
+        // Create form data for the upload
+        const formData = new FormData();
+        formData.append('employee_id', currentEmployeeId);
+        formData.append('image_data', imageData);
+        
+        // Send to server using FormData (which sets the correct Content-Type automatically)
         fetch('/api/employee-profile-picture/', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: JSON.stringify({
-                employee_id: currentEmployeeId,
-                image_data: imageData
-            })
+            body: formData
         })
         .then(response => response.json())
         .then(data => {
@@ -1206,4 +1244,223 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load departments for filter on page load
     loadDepartmentsForFilter();
+    
+    // --- Company Logo Functionality ---
+    
+    // Fetch existing company logo from server
+    fetchCompanyLogo();
+    
+    // Function to fetch company logo
+    function fetchCompanyLogo() {
+        fetch('/api/company-logo/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.has_logo) {
+                    // Show logo image
+                    logoPlaceholder.classList.add('hidden');
+                    logoImage.classList.remove('hidden');
+                    logoImage.src = data.logo_url + '?t=' + new Date().getTime(); // Prevent caching
+                    removeLogoBtn.classList.remove('hidden');
+                    currentLogoUrl = data.logo_url;
+                } else {
+                    // Show placeholder
+                    logoPlaceholder.classList.remove('hidden');
+                    logoImage.classList.add('hidden');
+                    logoImage.src = '';
+                    removeLogoBtn.classList.add('hidden');
+                    currentLogoUrl = null;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching company logo:', error);
+                // Show placeholder on error
+                logoPlaceholder.classList.remove('hidden');
+                logoImage.classList.add('hidden');
+                logoImage.src = '';
+                removeLogoBtn.classList.add('hidden');
+            });
+    }
+    
+    // Trigger file input when upload button is clicked
+    uploadLogoBtn.addEventListener('click', function() {
+        logoInput.click();
+    });
+    
+    // Handle logo file selection
+    logoInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                logoCropContainer.innerHTML = `<img id="logo-crop-image" src="${e.target.result}" class="max-w-full">`;                const logoCropImage = document.getElementById('logo-crop-image');
+                
+                // Show the crop modal
+                logoCropModal.classList.remove('hidden');
+                
+                // Initialize cropper after image is loaded
+                logoCropImage.onload = function() {
+                    logoCropper = new Cropper(logoCropImage, {
+                        // No fixed aspect ratio for logo
+                        aspectRatio: NaN,
+                        viewMode: 2,
+                        ready: function() {
+                            // Set initial crop box size
+                            const containerData = logoCropper.getContainerData();
+                            const minSize = Math.min(containerData.width, containerData.height);
+                            logoCropper.setCropBoxData({
+                                width: minSize * 0.8,
+                                height: minSize * 0.8
+                            });
+                        }
+                    });
+                };
+            };
+            
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
+      // Close logo crop modal
+    closeLogoCropModalBtn.addEventListener('click', closeLogoCropModal);
+    cancelLogoCropBtn.addEventListener('click', closeLogoCropModal);
+    
+    function closeLogoCropModal() {
+        logoCropModal.classList.add('hidden');
+        if (logoCropper) {
+            logoCropper.destroy();
+            logoCropper = null;
+        }
+        logoInput.value = ''; // Reset file input
+    }
+    
+    // Apply logo crop
+    applyLogoCropBtn.addEventListener('click', function() {
+        if (logoCropper) {
+            const croppedCanvas = logoCropper.getCroppedCanvas({
+                minWidth: 256,
+                minHeight: 256,
+                maxWidth: 1024,
+                maxHeight: 1024,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
+            });
+            
+            const croppedImage = croppedCanvas.toDataURL('image/png');
+            
+            // Update UI first for better user experience
+            logoPlaceholder.classList.add('hidden');
+            logoImage.classList.remove('hidden');
+            logoImage.src = croppedImage;
+            removeLogoBtn.classList.remove('hidden');
+            
+            // Close modal
+            closeLogoCropModal();
+            
+            // Upload to server
+            uploadCompanyLogo(croppedImage);
+        }
+    });    // Upload company logo to server
+    function uploadCompanyLogo(imageData) {
+        // Show loading notification
+        showNotification('Uploading company logo...', 'info');
+        
+        // Create form data for the upload
+        const formData = new FormData();
+        formData.append('image_data', imageData);
+        
+        fetch('/api/company-logo/upload/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+                // Important: Do not set Content-Type header for FormData
+                // The browser will set it automatically with the proper boundary
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Company logo uploaded successfully.');
+                currentLogoUrl = data.logo_url;
+            } else {
+                showNotification(data.message || 'Failed to upload company logo.', 'error');
+                // Revert UI if upload failed
+                fetchCompanyLogo();
+            }
+        })
+        .catch(error => {
+            console.error('Error uploading company logo:', error);
+            showNotification('An error occurred while uploading the company logo.', 'error');            // Revert UI if upload failed
+            fetchCompanyLogo();
+        });
+    }
+      // Handle remove logo button click
+    removeLogoBtn.addEventListener('click', function() {
+        logoDeletePreviewImage.src = logoImage.src;
+        logoDeleteModal.classList.remove('hidden');
+        logoDeleteModalContent.classList.remove('scale-95', 'opacity-0');
+        logoDeleteModalContent.classList.add('scale-100', 'opacity-100');
+    });
+    
+    // Close logo delete modal
+    closeLogoDeleteModalBtn.addEventListener('click', closeLogoDeleteModal);
+    cancelLogoDeleteBtn.addEventListener('click', closeLogoDeleteModal);
+    
+    function closeLogoDeleteModal() {
+        // First animate the content out
+        logoDeleteModalContent.classList.remove('scale-100', 'opacity-100');
+        logoDeleteModalContent.classList.add('scale-95', 'opacity-0');
+        
+        // Wait for animation to complete before hiding the modal
+        setTimeout(() => {
+            logoDeleteModal.classList.add('hidden');
+            // Reset any error messages
+            logoDeleteStatus.classList.add('hidden');
+            logoDeleteStatus.textContent = '';
+        }, 200); // 200ms matches the transition duration in the CSS
+    }
+    
+    // Confirm logo delete
+    confirmLogoDeleteBtn.addEventListener('click', function() {
+        // Show loading
+        logoDeleteBtnText.classList.add('hidden');
+        logoDeleteBtnLoading.classList.remove('hidden');
+        
+        // Call server to delete the company logo
+        fetch('/api/company-logo/delete/', {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Close modal
+                closeLogoDeleteModal();
+                
+                // Update UI
+                logoPlaceholder.classList.remove('hidden');
+                logoImage.classList.add('hidden');
+                logoImage.src = '';
+                removeLogoBtn.classList.add('hidden');
+                
+                showNotification('Company logo removed successfully.');
+                currentLogoUrl = null;
+            } else {
+                logoDeleteStatus.classList.remove('hidden');
+                logoDeleteStatus.textContent = data.message || 'Failed to remove company logo.';
+                logoDeleteStatus.classList.add('bg-red-100', 'text-red-800', 'p-3', 'rounded-md');
+            }
+        })
+        .catch(error => {
+            console.error('Error removing company logo:', error);
+            logoDeleteStatus.classList.remove('hidden');
+            logoDeleteStatus.textContent = 'An error occurred while removing the company logo.';
+            logoDeleteStatus.classList.add('bg-red-100', 'text-red-800', 'p-3', 'rounded-md');
+        })
+        .finally(() => {
+            logoDeleteBtnText.classList.remove('hidden');
+            logoDeleteBtnLoading.classList.add('hidden');
+        });
+    });
 });

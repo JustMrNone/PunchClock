@@ -15,6 +15,7 @@ __all__ = [
     'GetProfilePictureView',
     'EmployeeProfilePictureView',
     'GetEmployeeProfilePictureView',
+    'DeleteEmployeeProfilePictureView',
 ]
 
 @method_decorator(login_required, name='dispatch')
@@ -160,9 +161,16 @@ class EmployeeProfilePictureView(UserPassesTestMixin, View):
     def post(self, request):
         try:
             # Get the employee ID from request
-            data = json.loads(request.body)
-            employee_id = data.get('employee_id')
-            image_data = data.get('image_data')
+            # Handle both form data and JSON formats
+            if request.content_type and 'application/json' in request.content_type:
+                # JSON data format
+                data = json.loads(request.body)
+                employee_id = data.get('employee_id')
+                image_data = data.get('image_data')
+            else:
+                # Form data format
+                employee_id = request.POST.get('employee_id')
+                image_data = request.POST.get('image_data')
             
             if not employee_id or not image_data:
                 return JsonResponse({
@@ -331,3 +339,55 @@ class GetEmployeeProfilePictureView(UserPassesTestMixin, View):
             import traceback
             traceback.print_exc()
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
+
+@method_decorator(login_required, name='dispatch')
+class DeleteEmployeeProfilePictureView(UserPassesTestMixin, View):
+    """View to handle employee profile picture deletion (for admin users) with a URL parameter"""
+    def test_func(self):
+        return self.request.user.is_staff
+        
+    def post(self, request, employee_id):
+        try:
+            # Verify employee belongs to this admin
+            try:
+                employee = Employee.objects.get(id=employee_id, admin=request.user)
+            except Employee.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Employee not found or not authorized'
+                }, status=404)
+            
+            # Get the profile picture
+            profile_pic = ProfilePicture.objects.filter(user=employee.user).first()
+            
+            if profile_pic and profile_pic.image:
+                # Delete the image file
+                try:
+                    if os.path.exists(profile_pic.image.path):
+                        os.remove(profile_pic.image.path)
+                except Exception as e:
+                    print(f"Error removing file: {e}")
+                    # Continue anyway since we need to clear the DB reference
+                
+                # Clear the image field
+                profile_pic.image = None
+                profile_pic.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Employee profile picture removed successfully'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'No profile picture found for this employee'
+                }, status=404)
+                
+        except Exception as e:
+            print(f"Error removing employee profile picture: {e}")
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({
+                'success': False, 
+                'message': f'Error removing profile picture: {str(e)}'
+            }, status=400)

@@ -15,6 +15,15 @@
     }
   })();
 </script>
+<script>
+    // Pass data from Django to JavaScript
+    window.userData = {
+        firstName: "{{ request.user.first_name }}",
+        lastName: "{{ request.user.last_name }}",
+        username: "{{ request.user.username }}",
+        initials: "{{ initials }}"
+    };
+</script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
@@ -42,24 +51,21 @@
         <div class="md:col-span-1">
             <div class="bg-white rounded-xl p-6 settings-card">
                 <h3 class="text-xl font-semibold text-gray-800 mb-6">Profile Picture</h3>
-                
-                <form id="profilePictureForm" enctype="multipart/form-data" method="post" action="/api/profile-picture/upload/">
+                  <form id="profilePictureForm" enctype="multipart/form-data" method="post" action="/api/profile-picture/">
                     {% csrf_token %}
                     <input type="file" id="profilePictureInput" name="profile_picture" accept="image/*" class="hidden">
-                    
-                    <div class="profile-picture-container mb-6" onclick="document.getElementById('profilePictureInput').click();">
-                        {% if has_profile_pic %}
-                        <img id="profileImage" src="{{ profile_pic_url }}" alt="Profile Picture" class="profile-picture">
-                        {% else %}
-                        <div id="profileInitialsContainer" class="w-full h-full bg-indigo-500 flex items-center justify-center">
-                            <span id="profileInitials" class="profile-initials">{{ initials }}</span>
+                        <div class="profile-picture-container mb-6" onclick="document.getElementById('profilePictureInput').click();">
+                            {% if has_profile_pic %}
+                            <img id="profileImage" src="{{ profile_pic_url }}" alt="Profile Picture" class="profile-picture">
+                            {% else %}
+                            <div id="profileInitialsContainer" class="w-full h-full bg-indigo-500 flex items-center justify-center">
+                                <span id="profileInitials" class="profile-initials">{{ initials }}</span>
+                            </div>
+                            {% endif %}
+                            <div class="profile-picture-overlay">
+                                <i class="fas fa-camera text-white text-3xl"></i>
+                            </div>
                         </div>
-                        {% endif %}
-                        <div class="profile-picture-overlay">
-                            <i class="fas fa-camera text-white text-3xl"></i>
-                        </div>
-                    </div>
-                    
                     <div class="flex justify-center">
                         <button type="button" id="removeProfilePicture" class="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors {% if not has_profile_pic %}hidden{% endif %}">
                             <i class="fas fa-trash-alt mr-2"></i>Remove Picture

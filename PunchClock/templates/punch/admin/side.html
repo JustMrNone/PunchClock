@@ -27,15 +27,15 @@
         <nav class="mt-6">
             <div class="mb-2">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Navigation</p>
-                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg mb-1" data-tab="dashboard">
+                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg mb-1" data-tab="dashboard" data-title="Dashboard | WorkTime Admin">
                     <i class="fas fa-tachometer-alt mr-3"></i>
                     Dashboard
                 </a>
-                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg mb-1" data-tab="employee-view">
+                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg mb-1" data-tab="employee-view" data-title="Employee View | WorkTime Admin">
                     <i class="fas fa-user mr-3"></i>
                     Employee View
                 </a>
-                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg" data-tab="team-view">
+                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg" data-tab="team-view" data-title="Team Overview | WorkTime Admin">
                     <i class="fas fa-users mr-3"></i>
                     Team Overview
                 </a>
@@ -43,15 +43,15 @@
             
             <div class="mb-2 mt-8">
                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Management</p>
-                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg mb-1" data-tab="settings">
+                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg mb-1" data-tab="settings" data-title="Settings | WorkTime Admin">
                     <i class="fas fa-cog mr-3"></i>
                     Settings
                 </a>
-                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg mb-1" data-tab="add-employee">
+                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg mb-1" data-tab="add-employee" data-title="Add Employee | WorkTime Admin">
                     <i class="fas fa-user-plus mr-3"></i>
                     Add Employee
                 </a>
-                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg" data-tab="export-data">
+                <a href="#" class="sidebar-link flex items-center py-2 px-3 rounded-lg" data-tab="export-data" data-title="Export Data | WorkTime Admin">
                     <i class="fas fa-file-export mr-3"></i>
                     Export Data
                 </a>
@@ -65,7 +65,8 @@
             </div>
             <button id="add-timezone" class="mt-4 w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">+</button>
             <div id="additional-timezones" class="mt-4"></div>
-        </div>    <script src="{% static 'punch/js/admin/sidea.js' %}"></script>
+        </div>    
+    <script src="{% static 'punch/js/admin/sidea.js' %}"></script>
     <script src="{% static 'punch/js/admin/sideb.js' %}"></script>
 
     <div class="fixed bottom-0 left-0 p-6">
@@ -74,3 +75,22 @@
         </button>
     </div>
 </div>
+<script>
+// Dynamically update the document title when switching admin tabs
+function setAdminTitleFromTab(tabLink) {
+    if (tabLink && tabLink.dataset && tabLink.dataset.title) {
+        document.title = tabLink.dataset.title;
+    }
+}
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial title based on active tab
+    const activeTab = document.querySelector('.sidebar-link.active') || document.querySelector('.sidebar-link');
+    setAdminTitleFromTab(activeTab);
+    // Listen for tab switches
+    document.querySelectorAll('.sidebar-link').forEach(function(link) {
+        link.addEventListener('click', function() {
+            setAdminTitleFromTab(this);
+        });
+    });
+});
+</script>

@@ -96,6 +96,7 @@ class CompanySettings(models.Model):
     company_name = models.CharField(max_length=255, default="")
     work_hours = models.DecimalField(max_digits=4, decimal_places=2, default=8.0)
     rest_hours = models.DecimalField(max_digits=4, decimal_places=2, default=1.0)
+    company_logo = models.ImageField(upload_to='company_logos/', null=True, blank=True)
     
     @property
     def total_work_hours(self):

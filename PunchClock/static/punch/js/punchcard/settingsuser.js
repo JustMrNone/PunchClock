@@ -20,8 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
             applyTheme('system');
         }
     });
-    
-    // Handle profile picture input change
+      // Handle profile picture input change
     profilePictureInput.addEventListener('change', function() {
         if (this.files && this.files[0]) {
             const file = this.files[0];
@@ -44,26 +43,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 profileImage.classList.remove('hidden');
                 profileImage.src = e.target.result;
+                  // Upload using base64 data directly
+                const imageData = {
+                    image_data: e.target.result
+                };
                 
-                // Submit form to upload the picture
-                const formData = new FormData(document.getElementById('profilePictureForm'));
-                uploadProfilePicture(formData);
+                // Upload the picture
+                uploadProfilePicture(imageData);
             };
             
             reader.readAsDataURL(file);
         }
     });
-    
-    // Remove profile picture
+      // Remove profile picture
     if (removeProfilePictureButton) {
-        removeProfilePictureButton.addEventListener('click', function() {
-            fetch('/api/profile-picture/remove/', {
-                method: 'POST',
+    removeProfilePictureButton.addEventListener('click', function() {
+            // Show loading notification
+            showNotification('Removing profile picture...', 'info');
+            
+            fetch('/api/profile-picture/', {
+                method: 'DELETE',
                 headers: {
                     'X-CSRFToken': getCookie('csrftoken')
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server responded with status: ' + response.status);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     // Show initials, hide image
@@ -81,47 +90,71 @@ document.addEventListener('DOMContentLoaded', function() {
                         initials.id = 'profileInitials';
                         initials.className = 'profile-initials';
                         initials.textContent = getInitials();
+                          container.appendChild(initials);
                         
-                        container.appendChild(initials);
-                        document.querySelector('.profile-picture-container').prepend(container);
+                        const pictureContainer = document.querySelector('.profile-picture-container');
+                        // Clear the container first
+                        pictureContainer.innerHTML = '';
+                        // Add the initials container
+                        pictureContainer.appendChild(container);
+                        // Add back the overlay for camera icon
+                        const overlay = document.createElement('div');
+                        overlay.className = 'profile-picture-overlay';
+                        overlay.innerHTML = '<i class="fas fa-camera text-white text-3xl"></i>';
+                        pictureContainer.appendChild(overlay);
                     }
                     
                     // Hide the remove button
                     removeProfilePictureButton.classList.add('hidden');
                     
+                    // Re-establish click handler
+                    const container = document.querySelector('.profile-picture-container');
+                    if (container) {
+                        container.onclick = function() {
+                            document.getElementById('profilePictureInput').click();
+                        };
+                    }
+                    
                     showNotification('Profile picture removed successfully');
                 } else {
-                    showNotification('Failed to remove profile picture', 'error');
+                    showNotification(data.message || 'Failed to remove profile picture', 'error');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                showNotification('An error occurred', 'error');
+                showNotification('An error occurred: ' + error.message, 'error');
             });
         });
-    }
-    
-    // Upload profile picture function
-    function uploadProfilePicture(formData) {
-        fetch('/api/profile-picture/upload/', {
+    }    // Upload profile picture function
+    function uploadProfilePicture(imageData) {
+        // Show loading notification
+        showNotification('Uploading profile picture...', 'info');
+        
+        fetch('/api/profile-picture/', {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: formData
+            body: new URLSearchParams(imageData)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Server responded with status: ' + response.status);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 showNotification('Profile picture updated successfully');
                 removeProfilePictureButton.classList.remove('hidden');
             } else {
-                showNotification('Failed to update profile picture', 'error');
+                showNotification(data.message || 'Failed to update profile picture', 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            showNotification('An error occurred', 'error');
+            showNotification('An error occurred: ' + error.message, 'error');
         });
     }
     
@@ -202,29 +235,46 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Get user initials function
+    // Replace the getInitials() function with this:
     function getInitials() {
-        const firstName = '{{ request.user.first_name }}';
-        const lastName = '{{ request.user.last_name }}';
-        
-        if (firstName && lastName) {
-            return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
-        } else if (firstName) {
-            return firstName.charAt(0).toUpperCase();
-        } else if (lastName) {
-            return lastName.charAt(0).toUpperCase();
-        } else {
-            return '{{ request.user.username|slice:":2" }}'.toUpperCase();
+        // Try to get initials from the existing element on the page
+        const profileInitialsElement = document.getElementById('profileInitials');
+        if (profileInitialsElement && profileInitialsElement.textContent && 
+            profileInitialsElement.textContent !== '{{ initials }}') {
+            return profileInitialsElement.textContent;
         }
+        
+        // Fallback to generating from name if available on page
+        const nameElement = document.querySelector('[data-user-fullname]');
+        if (nameElement && nameElement.dataset.userFullname) {
+            const fullName = nameElement.dataset.userFullname;
+            return fullName.split(' ').map(n => n[0]).join('').toUpperCase();
+        }
+        
+        // Last resort - return placeholder
+        return 'U';
     }
-    
-    // Show notification function
+      // Show notification function
     function showNotification(message, type = 'success') {
         const notification = document.createElement('div');
-        notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg ${
-            type === 'success' ? 'bg-green-600' : 'bg-red-600'
-        } text-white transition-all duration-300 transform translate-y-0`;
+        
+        // Choose background color based on notification type
+        let bgColor = 'bg-green-600';
+        if (type === 'error') {
+            bgColor = 'bg-red-600';
+        } else if (type === 'info') {
+            bgColor = 'bg-blue-600';
+        }
+        
+        notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg ${bgColor} text-white transition-all duration-300 transform translate-y-0`;
         notification.textContent = message;
         document.body.appendChild(notification);
+        
+        // Remove older notifications
+        const notifications = document.querySelectorAll('.bottom-4.right-4');
+        if (notifications.length > 3) {
+            notifications[0].remove();
+        }
         
         setTimeout(() => {
             notification.style.transform = 'translateY(150%)';

@@ -250,59 +250,35 @@ class DashboardStatsView(View):
         try:
             # Count total employees managed by this admin + the admin themselves
             employees_count = Employee.objects.filter(admin=request.user).count()
-            
-            # Add 1 for the admin (who may or may not have an employee record)
-            # Check if admin already has an employee record
+            # Add 1 for the admin only if they do NOT have an Employee record
             admin_has_employee = Employee.objects.filter(user=request.user).exists()
-            total_employees = employees_count + (0 if admin_has_employee else 1)
-            
+            total_employees = employees_count + (1 if not admin_has_employee else 0)
+
             # Count active employees today (those with time entries today)
             today = timezone.now().date()
-            
-            # Get all employees managed by this admin
             managed_employees = Employee.objects.filter(admin=request.user)
-            
-            # Get time entries for today
             active_employees = TimeEntry.objects.filter(
                 employee__in=managed_employees,
                 date=today
             ).values('employee').distinct().count()
-            
-            # Check if admin has time entries today
-            try:
-                admin_employee = Employee.objects.get(user=request.user)
-                admin_active = TimeEntry.objects.filter(
-                    employee=admin_employee,
-                    date=today
-                ).exists()
-                
-                if admin_active:
-                    active_employees += 1
-            except Employee.DoesNotExist:
-                # Admin without employee record is not counted in active
-                pass
-            
+            # Do NOT add 1 for admin, since admin is already in Employee table if they exist
+
             # Calculate average hours per employee
             avg_hours = 0
             entries = TimeEntry.objects.filter(
                 employee__in=managed_employees,
                 date=today
             )
-            
             if entries.exists():
                 total_hours = sum(float(entry.total_hours) for entry in entries if entry.total_hours)
                 avg_hours = round(total_hours / entries.count(), 1) if entries.count() > 0 else 0
-            
+
             return JsonResponse({
                 'success': True,
                 'total_employees': total_employees,
                 'active_today': active_employees,
                 'avg_hours': avg_hours
             })
-            
         except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': str(e)
-            }, status=500)
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
