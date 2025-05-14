@@ -97,38 +97,23 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Department / Employee Filter -->
+              <!-- Employee Filter -->
             <div class="mb-6">
-                <label for="filter-type" class="block text-sm font-medium text-gray-700 mb-2">Filter Data</label>
-                <div class="flex space-x-4 mb-2">
+                <div class="flex items-center justify-between">
                     <div class="flex items-center">
-                        <input type="radio" id="filter-all" name="filter_type" value="all" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300" checked>
-                        <label for="filter-all" class="ml-2 block text-sm text-gray-700">All Employees</label>
+                        <input id="export-all-employees" name="export_all_employees" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded" checked>
+                        <label for="export-all-employees" class="ml-2 block text-sm font-medium text-gray-700">Export All Employees</label>
                     </div>
-                    <div class="flex items-center">
-                        <input type="radio" id="filter-department" name="filter_type" value="department" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
-                        <label for="filter-department" class="ml-2 block text-sm text-gray-700">By Department</label>
-                    </div>
-                    <div class="flex items-center">
-                        <input type="radio" id="filter-employee" name="filter_type" value="employee" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
-                        <label for="filter-employee" class="ml-2 block text-sm text-gray-700">By Employee</label>
-                    </div>
+                    <button type="button" id="select-employees-btn" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 hidden">
+                        <i class="fas fa-users mr-2"></i>Select Employees
+                    </button>
+                </div>
+                  <div class="mt-2 hidden" id="selected-employees-summary">
+                    <span class="text-sm text-gray-600">No employees selected</span>
                 </div>
                 
-                <div id="department-filter" class="hidden mt-3">
-                    <select id="department-select" name="department" class="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">Select Department</option>
-                        <!-- Departments will be populated dynamically -->
-                    </select>
-                </div>
-                
-                <div id="employee-filter" class="hidden mt-3">
-                    <select id="employee-select" name="employee" class="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="">Select Employee</option>
-                        <!-- Employees will be populated dynamically -->
-                    </select>
-                </div>
+                <!-- Hidden input to store selected employee IDs -->
+                <input type="hidden" id="selected-employee-ids" name="selected_employee_ids" value="">
             </div>
             
             <div class="flex justify-between items-center mt-8">
@@ -158,8 +143,7 @@
             <!-- Preview data will be displayed here -->
         </div>
     </div>
-    
-    <!-- Recent Exports -->
+      <!-- Recent Exports -->
     <div class="bg-white rounded-xl p-6 shadow-md mt-8">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Exports</h3>
         <div id="recent-exports-container" class="overflow-x-auto">
@@ -177,6 +161,54 @@
                     <!-- Recent exports will be populated dynamically -->
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Selection Modal -->
+<div id="employee-selection-modal" class="fixed inset-0 bg-gray-800 bg-opacity-50 items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-800">Select Employees</h3>
+            <button id="close-employee-modal" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="mb-4 flex items-center">
+            <div class="relative flex-1 mr-4">
+                <input type="text" id="employee-search" placeholder="Search employees..." class="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+            </div>
+            
+            <div class="flex items-center">
+                <input id="select-all-employees" type="checkbox" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                <label for="select-all-employees" class="ml-2 text-sm text-gray-700">Select All</label>
+            </div>
+        </div>
+        
+        <!-- Department Filter Dropdown -->
+        <div class="mb-4">
+            <select id="department-filter-select" class="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">All Departments</option>
+                <!-- Departments will be populated dynamically -->
+            </select>
+        </div>
+        
+        <!-- Employee List - Scrollable -->
+        <div class="overflow-y-auto flex-1 border border-gray-200 rounded-lg">
+            <div id="employee-list" class="divide-y divide-gray-200">
+                <!-- Employees will be populated dynamically -->
+                <div class="text-center py-8 text-gray-500">Loading employees...</div>
+            </div>
+        </div>
+        
+        <div class="flex justify-between items-center mt-6">
+            <span id="selected-count" class="text-sm text-gray-600">0 employees selected</span>
+            <div class="flex space-x-4">
+                <button type="button" id="cancel-employee-selection" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Cancel</button>
+                <button type="button" id="apply-employee-selection" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Apply Selection</button>
+            </div>
         </div>
     </div>
 </div>

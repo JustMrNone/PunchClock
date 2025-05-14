@@ -282,9 +282,7 @@ document.addEventListener('DOMContentLoaded', function () {
             dayLabel.classList.add('text-xs', 'text-gray-500', 'absolute', 'top-1', 'left-2');
             const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             dayLabel.textContent = days[dayOfWeek];
-            dayCell.appendChild(dayLabel);
-
-            // Add click handler for date selection
+            dayCell.appendChild(dayLabel);            // Add click handler for date selection
             dayCell.addEventListener('click', function() {
                 document.querySelectorAll('.calendar-day').forEach(d => {
                     d.classList.remove('selected');
@@ -296,6 +294,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.classList.add('selected', 'bg-indigo-50', 'ring-2', 'ring-indigo-600', 'ring-offset-2');
                 selectedDate = dateString;
                 updateDateDisplay(new Date(dateString));
+                
+                // Dispatch custom event for selected date
+                document.dispatchEvent(new CustomEvent('calendarDaySelected', {
+                    detail: { date: dateString }
+                }));
+                console.log('Dispatched calendarDaySelected event with date:', dateString);
             });
 
             // Highlight today's date

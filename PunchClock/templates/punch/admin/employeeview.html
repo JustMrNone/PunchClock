@@ -1,4 +1,3 @@
-{% load static %}
 <!-- Employee View Tab -->
 <div id="employee-view" class="tab-content">
     <header class="flex justify-between items-center mb-8">
@@ -25,11 +24,13 @@
 
     <!-- Employee Summary -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-white rounded-xl p-6 time-card">
-            <div class="flex items-center">
-                <div id="employee-initials" class="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-2xl mr-4">--</div>
+        <div class="bg-white rounded-xl p-6 time-card">            <div class="flex items-center">                <!-- Profile picture will be shown when available, otherwise initials -->
+                <div id="employee-profile-container" class="w-16 h-16 rounded-full mr-4 overflow-hidden" style="display: block; position: relative;">
+                    <img id="employee-profile-image" class="w-full h-full object-cover hidden absolute top-0 left-0" src="" alt="Employee profile" style="display: none;">
+                    <div id="employee-initials" class="w-full h-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-2xl absolute top-0 left-0 theinitials" style="display: flex;">--</div>
+                </div>
                 <div>
-                    <h3 id="employee-name" class="text-xl font-semibold text-gray-800">Select an employee</h3>
+                    <h3 id="employee-name" class="text-xl font-semibold text-gray-800 thename">Select an employee</h3>
                     <p id="dep">--</p>
                 </div>
             </div>
@@ -70,12 +71,10 @@
         <div id="time-entries-container" class="space-y-4">
             <!-- Time entries will be loaded here dynamically -->
             <div id="no-entries-message" class="text-center py-6 text-gray-500">
-                No time entries for selected date
+                Select a date to view entries
             </div>
-        </div>
-
-        <!-- Add Entry Modal -->
-        <div id="entry-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+        </div>        <!-- Add Entry Modal -->
+        <div id="entry-modal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 items-center justify-center z-50" style="display: none;">
             <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
                 <div class="flex justify-between items-center mb-4">
                     <h3 id="entry-modal-title" class="text-lg font-semibold">Add Time Entry</h3>
@@ -84,6 +83,7 @@
                     </button>
                 </div>
                 <form id="entry-form">
+                    {% csrf_token %}
                     <input type="hidden" id="entry-id" value="">
                     <input type="hidden" id="entry-date" value="">
                     <div class="mb-4">
@@ -116,10 +116,8 @@
                     </div>
                 </form>
             </div>
-        </div>
-
-        <!-- Confirmation Dialog -->
-        <div id="confirm-dialog" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+        </div>        <!-- Confirmation Dialog -->
+        <div id="confirm-dialog" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 items-center justify-center z-50" style="display: none;">
             <div class="bg-white rounded-lg shadow-lg p-6 max-w-xs w-full mx-auto">
                 <h3 id="confirm-title" class="text-lg font-semibold text-center mb-3">Confirm Action</h3>
                 <p id="confirm-message" class="text-gray-600 text-sm text-center mb-6">Are you sure you want to proceed?</p>
@@ -128,10 +126,8 @@
                     <button id="ok-confirm-btn" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">Confirm</button>
                 </div>
             </div>
-        </div>
-
-        <!-- New Delete Confirmation Dialog -->
-        <div id="delete-confirm-dialog" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 flex items-center justify-center z-50">
+        </div>        <!-- New Delete Confirmation Dialog -->
+        <div id="delete-confirm-dialog" class="hidden fixed inset-0 bg-gray-800 bg-opacity-50 items-center justify-center z-50" style="display: none;">
             <div class="bg-white rounded-lg shadow-lg p-6 w-72">
                 <h3 class="text-lg font-semibold text-center mb-3">Delete Time Entry</h3>
                 <p class="text-gray-600 text-sm text-center mb-6 px-2">Are you sure you want to delete this time entry? This action cannot be undone.</p>
@@ -142,5 +138,1151 @@
             </div>
         </div>
     </div>
-    <script src="{% static 'punch/js/admin/employeeview.js' %}"></script>
+
+    <script>
+
+
+        // Storage key constants
+        const EMPLOYEE_STORAGE_KEY = "selectedEmployeeId";
+        let employeesLoadedAndSelected = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up the delete confirmation dialog
+            const deleteConfirmDialog = document.getElementById('delete-confirm-dialog');
+            const deleteCancelBtn = document.getElementById('delete-cancel-btn');
+            const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+            let entryToDeleteId = null;
+            
+            // Cancel button click handler for delete dialog
+            deleteCancelBtn.addEventListener('click', function() {
+                deleteConfirmDialog.classList.add('hidden');
+                entryToDeleteId = null;
+            });
+            
+            // Confirm delete button click handler
+            deleteConfirmBtn.addEventListener('click', function() {
+                if (entryToDeleteId) {
+                    // Use the existing delete function from the time entries logic
+                    deleteTimeEntry(entryToDeleteId);
+                    deleteConfirmDialog.classList.add('hidden');
+                    entryToDeleteId = null;
+                }
+            });
+            
+            // Expose a global function to show the delete confirmation dialog
+            window.showDeleteConfirmation = function(entryId) {
+                entryToDeleteId = entryId;
+                deleteConfirmDialog.classList.remove('hidden');
+            };
+            
+            // Immediately check for saved employee to update UI
+            const savedEmployeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+            if (savedEmployeeId) {
+                // Show that we're loading a saved selection
+                const nameElement = document.getElementById('employee-name');
+                if (nameElement) nameElement.textContent = 'Loading saved selection...';
+            }
+            
+            // Focus on getting the NEW dropdown working
+            loadEmployeesForNewDropdown();
+            
+            // Listen for tab activation
+            document.querySelectorAll('[data-tab="employee-view"]').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    setTimeout(loadEmployeesForNewDropdown, 100);
+                });
+            });
+            
+            // Custom event for admin.html to trigger
+            document.getElementById('employee-view').addEventListener('tabActivated', function() {
+                console.log('Tab activated event received');
+                loadEmployeesForNewDropdown();
+            });
+              // Initialize time entries functionality
+            initializeTimeEntries();
+            
+            // Run diagnostic check after everything is loaded
+            setTimeout(checkEmployeeProfileDisplay, 500);
+        });
+
+        // Function specifically for the new dropdown
+        function loadEmployeesForNewDropdown() {
+            // Don't reload if we've already loaded and selected the employee
+            if (employeesLoadedAndSelected) {
+                console.log("Employees already loaded and selected, skipping reload");
+                return;
+            }
+            
+            console.log("Loading employees for dropdown");
+            var newDropdown = document.getElementById('new-employee-select');
+            
+            if (!newDropdown) {
+                console.error("Dropdown not found in DOM");
+                return;
+            }
+            
+            // Keep the placeholder showing "Loading..." during API fetch
+            // Don't change the dropdown content yet
+            
+            // Clear any animations or transitions
+            newDropdown.style.transition = 'none';
+            
+            // Get previously selected employee ID from localStorage
+            const savedEmployeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+            console.log("Found saved employee ID:", savedEmployeeId);
+              // If we have a saved employee ID, preload the employee details first
+            if (savedEmployeeId) {
+                console.log("Preloading details for saved employee ID:", savedEmployeeId);
+                loadEmployeeDetailsFromNewDropdown(savedEmployeeId);
+            }
+            
+            // Make an API request
+            fetch('/api/employees/get/')
+                .then(function(response) {
+                    console.log("Dropdown API response status:", response.status);
+                    return response.json();
+                })
+                .then(function(data) {
+                    console.log("Dropdown received data:", data);
+                    
+                    if (data.success && data.employees && data.employees.length > 0) {
+                        // Only now reset dropdown content
+                        let hasSelected = false;
+                        
+                        // First create the options without adding to the DOM
+                        let options = document.createDocumentFragment();
+                        
+                        // Add default option
+                        let defaultOption = document.createElement('option');
+                        defaultOption.value = "";
+                        defaultOption.textContent = "Choose Employee";
+                        options.appendChild(defaultOption);
+                        
+                        // Add each employee
+                        data.employees.forEach(function(emp) {
+                            var opt = document.createElement('option');
+                            opt.value = emp.id;
+                            opt.textContent = emp.full_name;
+                            // If this is the saved employee, mark it as selected
+                            if (savedEmployeeId && emp.id == savedEmployeeId) {
+                                opt.selected = true;
+                                hasSelected = true;
+                            }
+                            options.appendChild(opt);
+                        });
+                        
+                        // Now replace all options at once
+                        newDropdown.innerHTML = '';
+                        newDropdown.appendChild(options);
+                        
+                        // Flash the dropdown to draw attention
+                        newDropdown.style.backgroundColor = '#ffec99';
+                        setTimeout(function() {
+                            newDropdown.style.transition = 'background-color 1s';
+                            newDropdown.style.backgroundColor = '#f3f4ff';
+                        }, 500);
+                          // Add change event
+                        newDropdown.onchange = function() {
+                            console.log("Dropdown change detected, value:", this.value);
+                            if (this.value) {
+                                // Save the selected employee ID to localStorage
+                                localStorage.setItem(EMPLOYEE_STORAGE_KEY, this.value);
+                                console.log("Saved employee ID to localStorage:", this.value);
+                                  // Get the selected employee name directly from the dropdown option
+                                const selectedText = this.options[this.selectedIndex].text;
+                                  // Update the employee name display immediately for better UX
+                                const nameElement = document.getElementById('employee-name');
+                                const deptElement = document.getElementById('dep');
+                                const initialsElement = document.getElementById('employee-initials');
+                                const profileImageElement = document.getElementById('employee-profile-image');
+                                
+                                console.log("Employee elements found:", {
+                                    nameElement: !!nameElement,
+                                    deptElement: !!deptElement,
+                                    initialsElement: !!initialsElement, 
+                                    profileImageElement: !!profileImageElement
+                                });
+                                
+                                if (nameElement) {
+                                    // Add a little animation while updating
+                                    nameElement.classList.add('animate-pulse');
+                                    nameElement.textContent = selectedText;
+                                    setTimeout(() => nameElement.classList.remove('animate-pulse'), 500);
+                                    console.log("Updated employee name to:", selectedText);
+                                }
+                                // Then load full details
+                                loadEmployeeDetailsFromNewDropdown(this.value);                            } else {
+                                // Clear saved employee ID when "Choose Employee" is selected
+                                localStorage.removeItem(EMPLOYEE_STORAGE_KEY);
+                                console.log("Cleared saved employee ID from localStorage");
+                                
+                                // Directly set the name and initials
+                                const displayName = document.querySelector(".thename");
+                                const displayInitials = document.querySelector(".theinitials");
+                                
+                                if (displayName) displayName.textContent = "Select an employee";
+                                if (displayInitials) displayInitials.textContent = "--";
+                                
+                                // Reset when "Choose Employee" is selected
+                                resetEmployeeDisplay();
+                            }
+                        };
+                        
+                        // If we have a selected value, mark that we've loaded and selected
+                        if (hasSelected) {
+                            employeesLoadedAndSelected = true;
+                        }
+                        
+                        console.log("Dropdown setup complete. Current value:", newDropdown.value);
+                    } else {
+                        console.error("Dropdown: No employees found in API response");
+                        // If no employees, change placeholder
+                        newDropdown.innerHTML = '<option value="">No employees found</option>';
+                    }
+                })
+                .catch(function(error) {
+                    console.error("Dropdown error:", error);
+                    // On error, change placeholder
+                    newDropdown.innerHTML = '<option value="">Error loading employees</option>';
+                });
+        }        function loadEmployeeDetailsFromNewDropdown(employeeId) {
+            if (!employeeId) {
+                console.error("No employee ID provided");
+                resetEmployeeDisplay();
+                return;
+            }
+            
+            console.log("Loading details for employee ID:", employeeId);
+            
+            // Show loading state
+            const nameElement = document.getElementById('employee-name');
+            if (nameElement) {
+                nameElement.classList.add('animate-pulse');
+                nameElement.textContent = 'Loading employee...';
+            }
+            
+            // First fetch employee basic details
+            fetch('/api/employees/' + employeeId + '/')
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    if (data.success && data.employee) {
+                        console.log("Employee details received:", data.employee);
+                        
+                        var emp = data.employee;
+                        
+                        // Update the name display
+                        if (nameElement && emp.full_name) {
+                            nameElement.classList.remove('animate-pulse');
+                            nameElement.textContent = emp.full_name;
+                            console.log("Updated name display to:", emp.full_name);
+                        } else {
+                            console.error("Could not update employee name:", {
+                                nameElementExists: !!nameElement,
+                                fullNameExists: !!emp.full_name,
+                                fullName: emp.full_name
+                            });
+                        }
+                        
+                        // Update department display
+                        const depElement = document.getElementById('dep');
+                        const departmentText = emp.department && emp.department.name ? emp.department.name : '--';
+                        
+                        if (depElement) {
+                            depElement.textContent = departmentText;
+                            console.log("Updated department to:", departmentText);
+                        } else {
+                            console.error("Department element not found");
+                        }                        // Handle profile picture display - completely rewritten for reliable display
+                        const initialsElement = document.getElementById('employee-initials');
+                        const profileImageElement = document.getElementById('employee-profile-image');
+                        const profileContainer = document.getElementById('employee-profile-container');
+                        
+                        // Make sure we have the elements
+                        if (!initialsElement || !profileImageElement || !profileContainer) {
+                            console.error("Profile elements not found:", {
+                                initialsElement: !!initialsElement,
+                                profileImageElement: !!profileImageElement,
+                                profileContainer: !!profileContainer
+                            });
+                            return;
+                        }
+                        
+                        // Debug log to check what's happening
+                        console.log("Employee data for profile:", {
+                            name: emp.full_name,
+                            hasProfilePic: !!emp.profile_picture,
+                            picturePath: emp.profile_picture
+                        });
+                        
+                        // Always ensure visibility of the profile container first
+                        profileContainer.style.display = 'block';
+                        profileContainer.style.visibility = 'visible';
+                        
+                        try {
+                            // First determine what to show - picture or initials
+                            if (emp.profile_picture) {
+                                // SHOW PROFILE PICTURE APPROACH
+                                
+                                // 1. Set up the profile image source
+                                profileImageElement.src = emp.profile_picture;
+                                profileImageElement.alt = emp.full_name || 'Employee';
+                                
+                                // 2. Make profile image visible using direct style application 
+                                profileImageElement.style.display = 'block';
+                                profileImageElement.classList.remove('hidden');
+                                
+                                // 3. Hide initials using direct style
+                                initialsElement.style.display = 'none';
+                                initialsElement.classList.add('hidden');
+                                
+                                console.log("DISPLAYING PROFILE PICTURE:", emp.profile_picture);
+                            } else {
+                                // SHOW INITIALS APPROACH
+                                
+                                // 1. Generate and set initials
+                                const initials = emp.full_name ? getInitials(emp.full_name) : '--';
+                                initialsElement.textContent = initials;
+                                
+                                // 2. Make initials visible with direct style
+                                initialsElement.style.display = 'flex';
+                                initialsElement.classList.remove('hidden');
+                                
+                                // 3. Hide profile picture
+                                profileImageElement.style.display = 'none';
+                                profileImageElement.classList.add('hidden');
+                                profileImageElement.src = '';
+                                
+                                console.log("DISPLAYING INITIALS:", initials);
+                            }
+                            
+                            // Force a reflow by manipulating the DOM
+                            document.body.offsetHeight; 
+                            
+                            // Double check visibility after changes
+                            console.log("Element visibility after changes:", {
+                                initialsVisible: initialsElement.style.display !== 'none',
+                                initialsHidden: initialsElement.classList.contains('hidden'),
+                                profileVisible: profileImageElement.style.display !== 'none',
+                                profileHidden: profileImageElement.classList.contains('hidden')
+                            });
+                        } catch (error) {
+                            console.error("Error updating profile display:", error);
+                        }
+                              // Update the page title to include employee name
+                        const titleElement = document.querySelector('#employee-view h1.text-2xl');
+                        if (titleElement) {
+                            titleElement.textContent = 'Employee Time Tracking: ' + emp.full_name;
+                        }
+                        const theGodDamnName = document.querySelector(".thename")
+                        if (theGodDamnName) {
+                            theGodDamnName.textContent = emp.full_name;
+                        }
+                        const employeeInitials = getInitials(emp.full_name);
+
+                        function getInitials(name) {
+                            if (!name || typeof name !== 'string') return "--";
+                            
+                            try {
+                                // Split by spaces and get first character of each part
+                                const parts = name.trim().split(' ').filter(part => part.length > 0);
+                                
+                                if (parts.length === 0) return "--";
+                                
+                                // If only one name, return the first two characters
+                                if (parts.length === 1 && parts[0].length > 1) {
+                                    return parts[0].substring(0, 2).toUpperCase();
+                                }
+                                
+                                // Otherwise return first letter of first and last parts
+                                return (parts[0][0] + (parts.length > 1 ? parts[parts.length-1][0] : '')).toUpperCase();
+                            } catch (e) {
+                                console.error("Error generating initials from:", name, e);
+                                return "--";
+                            }
+                        }
+                        const theInitials = document.querySelector(".theinitials")
+                        // Get employee initials
+
+                        if (theInitials) {
+                            theInitials.textContent = employeeInitials;
+                        }
+                        // Then fetch time statistics separately
+                        return fetch('/api/time/stats/' + employeeId + '/');
+                    } else {
+                        console.error("Failed to load employee details");
+                        throw new Error("Failed to load employee details");
+                    }
+                })
+                .then(response => response.json())
+                .then(statsData => {
+                    console.log("Time statistics received:", statsData);
+                    
+                    if (statsData.success) {
+                        const weeklyHours = statsData.statistics.weekly_hours || 0;
+                        const dailyAverage = statsData.statistics.daily_average || 0;
+                        
+                        // Format to one decimal place and add "hours" text
+                        const weeklyHoursFormatted = parseFloat(weeklyHours).toFixed(1) + " hours";
+                        const dailyAverageFormatted = parseFloat(dailyAverage).toFixed(1) + " hours";
+                        
+                        // Update the UI
+                        document.getElementById('weekly-hours').textContent = weeklyHoursFormatted;
+                        document.getElementById('daily-average').textContent = dailyAverageFormatted;
+                        console.log("Updated statistics - Weekly hours:", weeklyHoursFormatted);
+                        console.log("Updated statistics - Daily average:", dailyAverageFormatted);
+                    } else {
+                        console.error("Failed to load time statistics:", statsData.message);
+                        // Set default values
+                        document.getElementById('weekly-hours').textContent = "0.0 hours";
+                        document.getElementById('daily-average').textContent = "0.0 hours";
+                    }
+                    
+                    // Dispatch event for calendar to update
+                    document.dispatchEvent(new CustomEvent('employeeSelected', { 
+                        detail: { employeeId: employeeId }
+                    }));
+                    console.log("Dispatched employeeSelected event with ID:", employeeId);                      // Visual feedback of successful data load and run diagnostics
+                    const profileContainer = document.getElementById('employee-profile-container');
+                    if (profileContainer) {
+                        profileContainer.style.transition = 'box-shadow 0.5s';
+                        profileContainer.style.boxShadow = '0 0 0 4px #c7f9cc';
+                        setTimeout(function() {
+                            profileContainer.style.boxShadow = '';
+                            // Run a diagnostic check after visuals update
+                            checkEmployeeProfileDisplay();
+                        }, 1000);
+                    }
+                })                .catch(function(error) {
+                    console.error("Error loading employee details or statistics:", error);
+                    
+                    // Set default values on error
+                    const weeklyHoursElement = document.getElementById('weekly-hours');
+                    const dailyAverageElement = document.getElementById('daily-average');
+                    
+                    if (weeklyHoursElement) weeklyHoursElement.textContent = "0.0 hours";
+                    if (dailyAverageElement) dailyAverageElement.textContent = "0.0 hours";
+                    
+                    // Remove loading state from name if needed
+                    const nameElement = document.getElementById('employee-name');
+                    if (nameElement && nameElement.classList.contains('animate-pulse')) {
+                        nameElement.classList.remove('animate-pulse');
+                    }
+                    
+                    // Show error notification to user
+                    showErrorNotification("Failed to load employee data. Please try again.");
+                });
+        }        function resetEmployeeDisplay() {
+            const nameElement = document.getElementById('employee-name');
+            const depElement = document.getElementById('dep');
+            const initialsElement = document.getElementById('employee-initials');
+            const profileImageElement = document.getElementById('employee-profile-image');
+            const profileContainer = document.getElementById('employee-profile-container');
+            const weeklyHoursElement = document.getElementById('weekly-hours');
+            const dailyAverageElement = document.getElementById('daily-average');
+
+            console.log("Resetting employee display");
+
+            // Reset name and department
+            if (nameElement) {
+                nameElement.textContent = 'Select an employee';
+                nameElement.classList.remove('animate-pulse');
+            }
+            
+            if (depElement) {
+                depElement.textContent = '--';
+                depElement.classList.remove('animate-pulse');
+            }
+            
+            // Reset title if it was changed
+            const titleElement = document.querySelector('#employee-view h1.text-2xl');
+            if (titleElement) {
+                titleElement.textContent = 'Employee Time Tracking';
+            }
+            
+            // Reset profile picture/initials with direct style manipulation
+            if (initialsElement) {
+                initialsElement.textContent = '--';
+                initialsElement.style.display = 'flex';
+                initialsElement.classList.remove('hidden');
+                console.log("Reset initials element - now visible");
+            }
+            
+            if (profileImageElement) {
+                profileImageElement.style.display = 'none';
+                profileImageElement.classList.add('hidden');
+                profileImageElement.src = '';
+                console.log("Reset profile image element - now hidden");
+            }
+            
+            // Ensure profile container is visible
+            if (profileContainer) {
+                profileContainer.style.display = 'block';
+                profileContainer.style.visibility = 'visible';
+            }
+            
+            // Reset statistics
+            if (weeklyHoursElement) weeklyHoursElement.textContent = '0 hours';
+            if (dailyAverageElement) dailyAverageElement.textContent = '0 hours';
+            
+            // Force a DOM reflow to apply all style changes immediately
+            document.body.offsetHeight;
+            
+            // Log the visibility state after reset
+            console.log("Profile element visibility after reset:", {
+                nameText: nameElement ? nameElement.textContent : 'not found',
+                initialsText: initialsElement ? initialsElement.textContent : 'not found',
+                initialsVisible: initialsElement ? initialsElement.style.display !== 'none' : 'not found',
+                profileVisible: profileImageElement ? profileImageElement.style.display !== 'none' : 'not found'
+            });
+            
+            // Dispatch a custom event to notify the calendar to reset
+            document.dispatchEvent(new CustomEvent('employeeReset'));
+            console.log("Dispatched employeeReset event");
+        }
+
+        // Utility function to diagnose and fix display issues
+        function checkEmployeeProfileDisplay() {
+            const profileContainer = document.getElementById('employee-profile-container');
+            const profileImage = document.getElementById('employee-profile-image');
+            const initialsElement = document.getElementById('employee-initials');
+            const nameElement = document.getElementById('employee-name');
+            const depElement = document.getElementById('dep');
+            
+            console.log("==== EMPLOYEE PROFILE DISPLAY DIAGNOSTIC ====");
+            console.log("Elements found:", {
+                profileContainer: !!profileContainer,
+                profileImage: !!profileImage,
+                initialsElement: !!initialsElement,
+                nameElement: !!nameElement,
+                depElement: !!depElement
+            });
+            
+            if (profileContainer) {
+                console.log("Profile container:", {
+                    display: window.getComputedStyle(profileContainer).display,
+                    visibility: window.getComputedStyle(profileContainer).visibility,
+                    width: window.getComputedStyle(profileContainer).width,
+                    height: window.getComputedStyle(profileContainer).height,
+                    position: window.getComputedStyle(profileContainer).position
+                });
+            }
+            
+            if (profileImage) {
+                console.log("Profile image:", {
+                    display: window.getComputedStyle(profileImage).display,
+                    visibility: window.getComputedStyle(profileImage).visibility,
+                    src: profileImage.src,
+                    alt: profileImage.alt,
+                    hasHiddenClass: profileImage.classList.contains('hidden')
+                });
+            }
+            
+            if (initialsElement) {
+                console.log("Initials element:", {
+                    display: window.getComputedStyle(initialsElement).display,
+                    visibility: window.getComputedStyle(initialsElement).visibility,
+                    text: initialsElement.textContent,
+                    hasHiddenClass: initialsElement.classList.contains('hidden')
+                });
+            }
+            
+            if (nameElement) {
+                console.log("Name element:", {
+                    text: nameElement.textContent,
+                    hasAnimationClass: nameElement.classList.contains('animate-pulse')
+                });
+            }
+            
+            if (depElement) {
+                console.log("Department element:", {
+                    text: depElement.textContent,
+                    hasAnimationClass: depElement.classList.contains('animate-pulse')
+                });
+            }
+            
+            // Try to fix any display issues
+            if (profileContainer) {
+                profileContainer.style.display = 'block';
+                profileContainer.style.visibility = 'visible';
+            }
+            
+            // Make sure exactly one display element is visible
+            const selectedEmployeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+            if (selectedEmployeeId) {
+                // An employee is selected, check if either profile or initials is visible
+                if (profileImage && profileImage.src && !profileImage.src.endsWith('/')) {
+                    // Profile image has a valid source, show it
+                    if (initialsElement) {
+                        initialsElement.style.display = 'none';
+                        initialsElement.classList.add('hidden');
+                    }
+                    profileImage.style.display = 'block';
+                    profileImage.classList.remove('hidden');
+                    console.log("Fixed: Showing profile image");
+                } else {
+                    // No valid profile image, show initials
+                    if (profileImage) {
+                        profileImage.style.display = 'none';
+                        profileImage.classList.add('hidden');
+                    }
+                    if (initialsElement) {
+                        initialsElement.style.display = 'flex';
+                        initialsElement.classList.remove('hidden');
+                        console.log("Fixed: Showing initials");
+                    }
+                }
+            } else {
+                // No employee selected, reset to default state
+                if (profileImage) {
+                    profileImage.style.display = 'none';
+                    profileImage.classList.add('hidden');
+                }
+                if (initialsElement) {
+                    initialsElement.textContent = '--';
+                    initialsElement.style.display = 'flex';
+                    initialsElement.classList.remove('hidden');
+                    console.log("Fixed: Showing default initials");
+                }
+            }
+            
+            console.log("==== END DIAGNOSTIC ====");
+            return true;
+        }
+
+        // Utility function to show an error notification
+        function showErrorNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg bg-red-600 text-white transition-all duration-300 z-50';
+            notification.style.transform = 'translateY(-100%)';
+            
+            // Create a flex container for the message and close button
+            const container = document.createElement('div');
+            container.className = 'flex items-center justify-between';
+            
+            // Add the message
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            container.appendChild(messageSpan);
+            
+            // Add close button
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'ml-4 text-white hover:text-red-200';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = function() {
+                notification.style.transform = 'translateY(-100%)';
+                setTimeout(() => notification.remove(), 300);
+            };
+            container.appendChild(closeBtn);
+            
+            notification.appendChild(container);
+            document.body.appendChild(notification);
+            
+            // Show the notification with animation
+            setTimeout(() => {
+                notification.style.transition = 'transform 0.3s ease-out';
+                notification.style.transform = 'translateY(0)';
+            }, 10);
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                notification.style.transform = 'translateY(-100%)';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
+
+        // Run immediately to populate the dropdown
+        setTimeout(loadEmployeesForNewDropdown, 100);
+        
+        // Time entries functionality
+        function initializeTimeEntries() {
+            console.log("Initializing time entries functionality");
+            
+            // Elements
+            const addEntryBtn = document.getElementById('add-entry-btn');
+            const entryModal = document.getElementById('entry-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const cancelEntryBtn = document.getElementById('cancel-entry-btn');
+            const entryForm = document.getElementById('entry-form');
+            const entryModalTitle = document.getElementById('entry-modal-title');
+            const entryIdField = document.getElementById('entry-id');
+            const entryDateField = document.getElementById('entry-date');
+            const startTimeField = document.getElementById('start-time');
+            const endTimeField = document.getElementById('end-time');
+            const entryTypeField = document.getElementById('entry-type');
+            const entryNotesField = document.getElementById('entry-notes');
+            const timeEntriesContainer = document.getElementById('time-entries-container');
+            const noEntriesMessage = document.getElementById('no-entries-message');
+            const timeEntriesDate = document.getElementById('time-entries-date');
+            
+            // State variables
+            let selectedDate = formatDate(new Date()); // Default to today
+            let currentEmployeeId = null;
+            let isEditMode = false;
+            
+            // Add Entry button click handler
+            addEntryBtn.addEventListener('click', function() {
+                // Check if an employee is selected
+                const employeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+                if (!employeeId) {
+                    showErrorNotification("Please select an employee first");
+                    return;
+                }
+                
+                // Reset form for a new entry
+                resetEntryForm();
+                
+                // Set the date field to the current selected date
+                entryDateField.value = selectedDate;
+                
+                // Show the modal
+                entryModal.classList.remove('hidden');
+            });
+            
+            // Close modal buttons
+            closeModalBtn.addEventListener('click', function() {
+                entryModal.classList.add('hidden');
+            });
+            
+            cancelEntryBtn.addEventListener('click', function() {
+                entryModal.classList.add('hidden');
+            });
+            
+            // Form submission
+            entryForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Get the employee ID
+                const employeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+                if (!employeeId) {
+                    showErrorNotification("No employee selected");
+                    return;
+                }
+                
+                // Validate times
+                if (!validateTimes(startTimeField.value, endTimeField.value)) {
+                    return;
+                }
+                
+                // Prepare entry data
+                const entryData = {
+                    employee_id: employeeId,
+                    date: entryDateField.value,
+                    start_time: startTimeField.value,
+                    end_time: endTimeField.value,
+                    entry_type: entryTypeField.value,
+                    notes: entryNotesField.value
+                };
+                
+                // Add CSRF token for POST request
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                // Determine if creating or updating
+                const url = isEditMode ? `/api/time/entry/${entryIdField.value}/update/` : '/api/time/entry/create/';
+                const method = isEditMode ? 'PUT' : 'POST';
+                
+                // Show loading state
+                const submitButton = entryForm.querySelector('button[type="submit"]');
+                const originalBtnText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+                
+                // Make the API request
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(entryData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Hide modal
+                        entryModal.classList.add('hidden');
+                        
+                        // Show success notification
+                        const action = isEditMode ? "updated" : "created";
+                        showSuccessNotification(`Time entry ${action} successfully`);
+                        
+                        // Reload entries for the selected date
+                        loadTimeEntriesForDate(entryDateField.value, employeeId);
+                    } else {
+                        showErrorNotification(data.message || "Failed to save time entry");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving time entry:', error);
+                    showErrorNotification("An error occurred while saving the time entry");
+                })
+                .finally(() => {
+                    // Restore button state
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalBtnText;
+                });
+            });
+            
+            // Listen for calendar day selection
+            document.addEventListener('calendarDaySelected', function(e) {
+                const newDate = e.detail.date;
+                selectedDate = newDate;
+                
+                // Update date display
+                updateDateDisplay(newDate);
+                
+                // Get the currently selected employee
+                const employeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+                if (employeeId) {
+                    // Load time entries for this employee and date
+                    loadTimeEntriesForDate(newDate, employeeId);
+                } else {
+                    // If no employee is selected, show a message
+                    timeEntriesContainer.innerHTML = '';
+                    if (noEntriesMessage) {
+                        noEntriesMessage.textContent = 'Please select an employee';
+                        noEntriesMessage.classList.remove('hidden');
+                    }
+                }
+            });
+            
+            // Load time entries when an employee is selected
+            document.addEventListener('employeeSelected', function(e) {
+                const employeeId = e.detail.employeeId;
+                currentEmployeeId = employeeId;
+                
+                // Load entries for the current selected date
+                loadTimeEntriesForDate(selectedDate, employeeId);
+            });
+            
+            // Reset when employee is deselected
+            document.addEventListener('employeeReset', function() {
+                currentEmployeeId = null;
+                timeEntriesContainer.innerHTML = '';
+                if (noEntriesMessage) {
+                    noEntriesMessage.textContent = 'Please select an employee';
+                    noEntriesMessage.classList.remove('hidden');
+                }
+            });
+            
+            // Function to update the date display in the time entries section
+            function updateDateDisplay(dateString) {
+                const date = new Date(dateString);
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                timeEntriesDate.textContent = `Entries for ${date.toLocaleDateString('en-US', options)}`;
+            }
+            
+            // Function to load time entries for a specific date and employee
+            function loadTimeEntriesForDate(date, employeeId) {
+                console.log(`Loading time entries for date ${date} and employee ${employeeId}`);
+                
+                // Update UI to show loading state
+                timeEntriesContainer.innerHTML = '<div class="flex justify-center py-6"><i class="fas fa-spinner fa-spin text-indigo-600 text-xl"></i></div>';
+                if (noEntriesMessage) {
+                    noEntriesMessage.classList.add('hidden');
+                }
+                
+                // Make API request
+                fetch(`/api/time/entries/${employeeId}/?date=${date}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Time entries response:', data);
+                        
+                        // Clear previous entries
+                        timeEntriesContainer.innerHTML = '';
+                        
+                        if (data.success && data.entries && data.entries.length > 0) {
+                            // Sort entries by start time
+                            const sortedEntries = data.entries.sort((a, b) => {
+                                return a.start_time.localeCompare(b.start_time);
+                            });
+                            
+                            // Render each entry
+                            sortedEntries.forEach(entry => {
+                                timeEntriesContainer.appendChild(createEntryCard(entry));
+                            });
+                            
+                            // Hide no entries message
+                            if (noEntriesMessage) {
+                                noEntriesMessage.classList.add('hidden');
+                            }
+                        } else {
+                            // Show no entries message
+                            if (noEntriesMessage) {
+                                noEntriesMessage.textContent = 'No time entries for selected date';
+                                noEntriesMessage.classList.remove('hidden');
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading time entries:', error);
+                        timeEntriesContainer.innerHTML = '';
+                        
+                        // Show error message
+                        if (noEntriesMessage) {
+                            noEntriesMessage.textContent = 'Error loading time entries';
+                            noEntriesMessage.classList.remove('hidden');
+                        }
+                    });
+            }
+            
+            // Function to create an entry card element
+            function createEntryCard(entry) {
+                const card = document.createElement('div');
+                card.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200';
+                card.dataset.entryId = entry.id;
+                
+                // Calculate duration
+                const startTime = entry.start_time;
+                const endTime = entry.end_time;
+                const totalHours = entry.total_hours || calculateHours(startTime, endTime);
+                
+                // Create entry type badge
+                const badgeColor = getEntryTypeBadgeColor(entry.entry_type);
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="flex items-center">
+                                <span class="px-2 py-1 bg-${badgeColor}-100 text-${badgeColor}-800 text-xs font-medium rounded-full mr-2">${entry.entry_type || 'Regular'}</span>
+                                <span class="text-sm font-medium">${startTime} - ${endTime}</span>
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">${entry.notes || 'No notes'}</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm font-medium">${parseFloat(totalHours).toFixed(2)} hrs</span>
+                            <div class="flex space-x-1">
+                                <button class="edit-entry-btn p-1 text-blue-600 hover:text-blue-800" title="Edit" data-entry-id="${entry.id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="delete-entry-btn p-1 text-red-600 hover:text-red-800" title="Delete" data-entry-id="${entry.id}">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Add event listeners for edit and delete buttons
+                card.querySelector('.edit-entry-btn').addEventListener('click', function() {
+                    editTimeEntry(entry.id);
+                });
+                
+                card.querySelector('.delete-entry-btn').addEventListener('click', function() {
+                    showDeleteConfirmation(entry.id);
+                });
+                
+                return card;
+            }
+            
+            // Function to calculate hours between two time strings
+            function calculateHours(startTime, endTime) {
+                const [startHours, startMinutes] = startTime.split(':').map(Number);
+                const [endHours, endMinutes] = endTime.split(':').map(Number);
+                
+                let hours = endHours - startHours;
+                let minutes = endMinutes - startMinutes;
+                
+                if (minutes < 0) {
+                    hours--;
+                    minutes += 60;
+                }
+                
+                return hours + (minutes / 60);
+            }
+            
+            // Function to get badge color based on entry type
+            function getEntryTypeBadgeColor(entryType) {
+                const typeColors = {
+                    'Regular': 'blue',
+                    'Overtime': 'purple',
+                    'Meeting': 'green',
+                    'Training': 'yellow',
+                    'Other': 'gray'
+                };
+                
+                return typeColors[entryType] || 'blue';
+            }
+            
+            // Function to edit a time entry
+            function editTimeEntry(entryId) {
+                console.log(`Editing time entry ${entryId}`);
+                
+                // Get the employee ID
+                const employeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+                if (!employeeId) {
+                    showErrorNotification("No employee selected");
+                    return;
+                }
+                
+                // Fetch the entry details
+                fetch(`/api/time/entry/${entryId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.entry) {
+                            const entry = data.entry;
+                            
+                            // Update form for editing
+                            entryModalTitle.textContent = 'Edit Time Entry';
+                            entryIdField.value = entry.id;
+                            entryDateField.value = entry.date;
+                            startTimeField.value = entry.start_time;
+                            endTimeField.value = entry.end_time;
+                            entryTypeField.value = entry.entry_type || 'Regular';
+                            entryNotesField.value = entry.notes || '';
+                            
+                            // Set edit mode
+                            isEditMode = true;
+                            
+                            // Show the modal
+                            entryModal.classList.remove('hidden');
+                        } else {
+                            showErrorNotification("Failed to load time entry details");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading time entry details:', error);
+                        showErrorNotification("An error occurred while loading time entry details");
+                    });
+            }
+            
+            // Function to delete a time entry
+            window.deleteTimeEntry = function(entryId) {
+                console.log(`Deleting time entry ${entryId}`);
+                
+                // Get the employee ID
+                const employeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+                if (!employeeId) {
+                    showErrorNotification("No employee selected");
+                    return;
+                }
+                
+                // Get CSRF token for POST request
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                
+                // Make API request to delete the entry
+                fetch(`/api/time/entry/${entryId}/delete/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    }
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Show success notification
+                            showSuccessNotification("Time entry deleted successfully");
+                            
+                            // Reload entries for the selected date
+                            loadTimeEntriesForDate(selectedDate, employeeId);
+                        } else {
+                            showErrorNotification(data.message || "Failed to delete time entry");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting time entry:', error);
+                        showErrorNotification("An error occurred while deleting the time entry");
+                    });
+            };
+            
+            // Function to reset the entry form
+            function resetEntryForm() {
+                entryModalTitle.textContent = 'Add Time Entry';
+                entryForm.reset();
+                entryIdField.value = '';
+                isEditMode = false;
+                
+                // Set default times (9am - 5pm)
+                const now = new Date();
+                const defaultStartTime = '09:00';
+                const defaultEndTime = '17:00';
+                
+                startTimeField.value = defaultStartTime;
+                endTimeField.value = defaultEndTime;
+            }
+            
+            // Function to validate times
+            function validateTimes(startTime, endTime) {
+                // Parse times to compare
+                const [startHours, startMinutes] = startTime.split(':').map(Number);
+                const [endHours, endMinutes] = endTime.split(':').map(Number);
+                
+                // Convert to minutes since midnight for easy comparison
+                const startMinutesSinceMidnight = (startHours * 60) + startMinutes;
+                const endMinutesSinceMidnight = (endHours * 60) + endMinutes;
+                
+                // Check if end time is after start time
+                if (endMinutesSinceMidnight <= startMinutesSinceMidnight) {
+                    showErrorNotification("End time must be after start time");
+                    return false;
+                }
+                
+                return true;
+            }
+            
+            // Function to format date as YYYY-MM-DD
+            function formatDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+            
+            // Utility function to show a success notification
+            function showSuccessNotification(message) {
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 px-6 py-3 rounded-lg shadow-lg bg-green-600 text-white transition-all duration-300 z-50';
+                notification.style.transform = 'translateY(-100%)';
+                
+                // Create a flex container for the message and close button
+                const container = document.createElement('div');
+                container.className = 'flex items-center justify-between';
+                
+                // Add the message
+                const messageSpan = document.createElement('span');
+                messageSpan.textContent = message;
+                container.appendChild(messageSpan);
+                
+                // Add close button
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'ml-4 text-white hover:text-green-200';
+                closeBtn.innerHTML = '&times;';
+                closeBtn.onclick = function() {
+                    notification.style.transform = 'translateY(-100%)';
+                    setTimeout(() => notification.remove(), 300);
+                };
+                container.appendChild(closeBtn);
+                
+                notification.appendChild(container);
+                document.body.appendChild(notification);
+                
+                // Show the notification with animation
+                setTimeout(() => {
+                    notification.style.transition = 'transform 0.3s ease-out';
+                    notification.style.transform = 'translateY(0)';
+                }, 10);
+                
+                // Auto hide after 3 seconds
+                setTimeout(() => {
+                    notification.style.transform = 'translateY(-100%)';
+                    setTimeout(() => notification.remove(), 300);
+                }, 3000);
+            }
+            
+            // Update the date display for today initially
+            updateDateDisplay(selectedDate);
+            
+            // Check for a saved employee ID to load initial time entries
+            const savedEmployeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+            if (savedEmployeeId) {
+                currentEmployeeId = savedEmployeeId;
+                loadTimeEntriesForDate(selectedDate, savedEmployeeId);
+            }
+        }
+    </script>
 </div>

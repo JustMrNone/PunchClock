@@ -3,9 +3,10 @@
         const customDateFields = document.getElementById('custom-date-fields');
         const startDateInput = document.getElementById('start-date');
         const endDateInput = document.getElementById('end-date');
-        const filterTypeRadios = document.querySelectorAll('input[name="filter_type"]');
-        const departmentFilter = document.getElementById('department-filter');
-        const employeeFilter = document.getElementById('employee-filter');
+        const exportAllEmployeesCheckbox = document.getElementById('export-all-employees');
+        const selectEmployeesBtn = document.getElementById('select-employees-btn');
+        const selectedEmployeesSummary = document.getElementById('selected-employees-summary');
+        const selectedEmployeeIdsInput = document.getElementById('selected-employee-ids');
         const exportForm = document.getElementById('export-form');
         const previewBtn = document.getElementById('preview-btn');
         const exportBtn = document.getElementById('export-btn');
@@ -13,31 +14,62 @@
         const closePreviewBtn = document.getElementById('close-preview');
         const previewContent = document.getElementById('preview-content');
         const exportStatus = document.getElementById('export-status');
-        const departmentSelect = document.getElementById('department-select');
-        const employeeSelect = document.getElementById('employee-select');
+        const employeeSelectionModal = document.getElementById('employee-selection-modal');
+        const closeEmployeeModalBtn = document.getElementById('close-employee-modal');
+        const employeeSearch = document.getElementById('employee-search');
+        const selectAllEmployeesCheckbox = document.getElementById('select-all-employees');
+        const departmentFilterSelect = document.getElementById('department-filter-select');
+        const employeeList = document.getElementById('employee-list');
+        const selectedCountDisplay = document.getElementById('selected-count');
+        const cancelEmployeeSelectionBtn = document.getElementById('cancel-employee-selection');
+        const applyEmployeeSelectionBtn = document.getElementById('apply-employee-selection');
         const recentExportsList = document.getElementById('recent-exports-list');
         
         // Set default date values (Last Week)
         setDefaultDates();
         
+        // Check initial state of export all employees checkbox and show/hide buttons accordingly
+        if (!exportAllEmployeesCheckbox.checked) {
+            selectEmployeesBtn.classList.remove('hidden');
+            if (selectedEmployeeIdsInput.value) {
+                selectedEmployeesSummary.classList.remove('hidden');
+                updateSelectedEmployeesSummary();
+            }
+        }
+        
         // Initialize form elements
         loadDepartments();
         loadEmployees();
         loadRecentExports();
-        
-        // Set up event listeners
+          // Set up event listeners for data range
         dateRangePreset.addEventListener('change', handleDateRangeChange);
         
-        filterTypeRadios.forEach(radio => {
-            radio.addEventListener('change', handleFilterTypeChange);
-        });
-        
-        departmentSelect.addEventListener('change', () => {
-            if (document.getElementById('filter-department').checked) {
-                loadEmployeesByDepartment(departmentSelect.value);
+        // Set up employee selection
+        exportAllEmployeesCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                selectEmployeesBtn.classList.add('hidden');
+                selectedEmployeesSummary.classList.add('hidden');
+                selectedEmployeeIdsInput.value = '';
+            } else {
+                selectEmployeesBtn.classList.remove('hidden');
+                if (selectedEmployeeIdsInput.value) {
+                    selectedEmployeesSummary.classList.remove('hidden');
+                }
             }
         });
         
+        // Employee selection modal controls
+        selectEmployeesBtn.addEventListener('click', openEmployeeSelectionModal);
+        closeEmployeeModalBtn.addEventListener('click', closeEmployeeSelectionModal);
+        cancelEmployeeSelectionBtn.addEventListener('click', closeEmployeeSelectionModal);
+        applyEmployeeSelectionBtn.addEventListener('click', applyEmployeeSelection);
+        
+        // Employee search and filter
+        employeeSearch.addEventListener('input', filterEmployeeList);
+        departmentFilterSelect.addEventListener('change', filterEmployeeList);
+        selectAllEmployeesCheckbox.addEventListener('change', toggleSelectAllEmployees);
+        
+        // Data preview and export
         previewBtn.addEventListener('click', handlePreviewData);
         closePreviewBtn.addEventListener('click', () => {
             previewContainer.classList.add('hidden');
@@ -45,7 +77,11 @@
         
         exportForm.addEventListener('submit', handleExportSubmit);
         
-        // Load initial data
+        // Validate form to ensure at least one include checkbox is checked
+        document.querySelectorAll('input[name^="include_"]').forEach(checkbox => {
+            checkbox.addEventListener('change', validateIncludeCheckboxes);
+        });
+          // Load initial data and set up the form
         function setDefaultDates() {
             const today = new Date();
             const lastWeekStart = new Date(today);
@@ -63,6 +99,247 @@
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
+        }
+        
+        // Employee selection modal functions
+        let allEmployees = [];
+        let selectedEmployees = new Set();
+          function openEmployeeSelectionModal() {
+            // Reset search and filter
+            employeeSearch.value = '';
+            departmentFilterSelect.value = '';
+            
+            // Show modal with animation
+            employeeSelectionModal.classList.remove('hidden');
+            employeeSelectionModal.classList.add('flex');
+            employeeSelectionModal.style.opacity = '0';
+            setTimeout(() => {
+                employeeSelectionModal.style.opacity = '1';
+                employeeSelectionModal.style.transition = 'opacity 0.3s ease-out';
+            }, 10);
+            
+            // Initialize selected employees from the hidden input
+            if (selectedEmployeeIdsInput.value && selectedEmployees.size === 0) {
+                const ids = selectedEmployeeIdsInput.value.split(',').filter(id => id.trim());
+                ids.forEach(id => selectedEmployees.add(parseInt(id)));
+            }
+            
+            // Load employees if not already loaded
+            if (allEmployees.length === 0) {
+                loadAllEmployeesForSelection();
+            } else {
+                updateEmployeeSelectionList();
+            }
+            
+            // Update select all checkbox state
+            updateSelectAllCheckboxState();
+        }
+          function closeEmployeeSelectionModal() {
+            // Hide with animation
+            employeeSelectionModal.style.opacity = '0';
+            setTimeout(() => {
+                employeeSelectionModal.classList.add('hidden');
+                employeeSelectionModal.classList.remove('flex');
+                employeeSelectionModal.style.transition = '';
+            }, 300);
+        }
+        
+        function loadAllEmployeesForSelection() {
+            // Show loading state
+            employeeList.innerHTML = '<div class="text-center py-8 text-gray-500">Loading employees...</div>';
+            
+            // Fetch all employees
+            fetch('/api/employees/get/')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        allEmployees = data.employees;
+                        
+                        // Also populate departments filter
+                        populateDepartmentFilter(allEmployees);
+                        
+                        // Display employees
+                        updateEmployeeSelectionList();
+                    } else {
+                        employeeList.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load employees</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading employees:', error);
+                    employeeList.innerHTML = '<div class="text-center py-8 text-red-500">Failed to load employees</div>';
+                });
+        }
+        
+        function populateDepartmentFilter(employees) {
+            // Extract unique departments
+            const departments = [...new Set(employees.map(emp => emp.department).filter(Boolean))];
+            
+            // Sort departments alphabetically
+            departments.sort();
+            
+            // Clear existing options except the first "All Departments"
+            while (departmentFilterSelect.childElementCount > 1) {
+                departmentFilterSelect.removeChild(departmentFilterSelect.lastChild);
+            }
+            
+            // Add department options
+            departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                departmentFilterSelect.appendChild(option);
+            });
+        }
+        
+        function updateEmployeeSelectionList() {
+            // Get current filter values
+            const searchText = employeeSearch.value.toLowerCase();
+            const departmentFilter = departmentFilterSelect.value;
+            
+            // Filter employees based on search and department
+            const filteredEmployees = allEmployees.filter(emp => {
+                const matchesSearch = !searchText || emp.full_name.toLowerCase().includes(searchText) || 
+                                     emp.email.toLowerCase().includes(searchText);
+                const matchesDepartment = !departmentFilter || emp.department === departmentFilter;
+                return matchesSearch && matchesDepartment;
+            });
+            
+            // Clear existing list
+            employeeList.innerHTML = '';
+            
+            // Handle no results
+            if (filteredEmployees.length === 0) {
+                employeeList.innerHTML = '<div class="text-center py-8 text-gray-500">No employees match your filters</div>';
+                return;
+            }
+            
+            // Create employee items with checkboxes
+            filteredEmployees.forEach(emp => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center p-4 hover:bg-gray-50';
+                
+                const isSelected = selectedEmployees.has(emp.id);
+                
+                item.innerHTML = `
+                    <input type="checkbox" data-employee-id="${emp.id}" class="employee-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded" ${isSelected ? 'checked' : ''}>
+                    <div class="ml-3">
+                        <div class="font-medium text-gray-800">${emp.full_name}</div>
+                        <div class="text-sm text-gray-500">${emp.email}</div>
+                    </div>
+                    <div class="ml-auto text-sm text-gray-600">${emp.department || 'No Department'}</div>
+                `;
+                
+                // Add event listener for checkbox
+                const checkbox = item.querySelector('.employee-checkbox');
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        selectedEmployees.add(emp.id);
+                    } else {
+                        selectedEmployees.delete(emp.id);
+                    }
+                    
+                    // Update selected count
+                    updateSelectedCount();
+                    
+                    // Update select all checkbox state
+                    updateSelectAllCheckboxState();
+                });
+                
+                employeeList.appendChild(item);
+            });
+            
+            // Update selected count
+            updateSelectedCount();
+        }
+        
+        function updateSelectedCount() {
+            const count = selectedEmployees.size;
+            selectedCountDisplay.textContent = `${count} employee${count !== 1 ? 's' : ''} selected`;
+        }
+        
+        function filterEmployeeList() {
+            updateEmployeeSelectionList();
+        }
+        
+        function toggleSelectAllEmployees() {
+            const selectAll = selectAllEmployeesCheckbox.checked;
+            
+            // Get all visible employee checkboxes
+            const checkboxes = document.querySelectorAll('.employee-checkbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll;
+                const employeeId = parseInt(checkbox.getAttribute('data-employee-id'));
+                
+                if (selectAll) {
+                    selectedEmployees.add(employeeId);
+                } else {
+                    selectedEmployees.delete(employeeId);
+                }
+            });
+            
+            // Update selected count
+            updateSelectedCount();
+        }
+        
+        function updateSelectAllCheckboxState() {
+            const visibleCheckboxes = document.querySelectorAll('.employee-checkbox');
+            
+            if (visibleCheckboxes.length === 0) {
+                selectAllEmployeesCheckbox.checked = false;
+                selectAllEmployeesCheckbox.indeterminate = false;
+                return;
+            }
+            
+            const checkedCount = [...visibleCheckboxes].filter(cb => cb.checked).length;
+            
+            if (checkedCount === 0) {
+                selectAllEmployeesCheckbox.checked = false;
+                selectAllEmployeesCheckbox.indeterminate = false;
+            } else if (checkedCount === visibleCheckboxes.length) {
+                selectAllEmployeesCheckbox.checked = true;
+                selectAllEmployeesCheckbox.indeterminate = false;
+            } else {
+                selectAllEmployeesCheckbox.checked = false;
+                selectAllEmployeesCheckbox.indeterminate = true;
+            }
+        }
+          function applyEmployeeSelection() {
+            const selectedIds = Array.from(selectedEmployees);
+            
+            // Set the hidden input value
+            selectedEmployeeIdsInput.value = selectedIds.join(',');
+            
+            // Update the summary text
+            if (selectedIds.length > 0) {
+                selectedEmployeesSummary.classList.remove('hidden');
+                updateSelectedEmployeesSummary();
+            } else {
+                selectedEmployeesSummary.classList.add('hidden');
+            }
+            
+            // Close the modal
+            closeEmployeeSelectionModal();
+        }
+        
+        function updateSelectedEmployeesSummary() {
+            const selectedIds = selectedEmployeeIdsInput.value.split(',').filter(id => id.trim());
+            if (selectedIds.length > 0) {
+                selectedEmployeesSummary.querySelector('span').textContent = 
+                    `${selectedIds.length} employee${selectedIds.length !== 1 ? 's' : ''} selected`;
+            }
+        }
+        
+        // Validation function to ensure at least one include checkbox is checked
+        function validateIncludeCheckboxes() {
+            const includeCheckboxes = document.querySelectorAll('input[name^="include_"]');
+            const checkedCount = [...includeCheckboxes].filter(cb => cb.checked).length;
+            
+            // If none are checked, re-check the first one
+            if (checkedCount === 0) {
+                includeCheckboxes[0].checked = true;
+                alert('At least one data type must be selected for export.');
+            }
         }
         
         function handleDateRangeChange() {
@@ -254,9 +531,14 @@
                 })
                 .catch(error => console.error('Error loading recent exports:', error));
         }
-        
-        function handlePreviewData(e) {
+          function handlePreviewData(e) {
             e.preventDefault();
+            
+            // Validate employee selection
+            if (!exportAllEmployeesCheckbox.checked && !selectedEmployeeIdsInput.value.trim()) {
+                alert('Please select at least one employee or check "Export All Employees"');
+                return;
+            }
             
             // Show loading state
             previewContent.innerHTML = `
@@ -368,9 +650,22 @@
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
         }
-        
-        function handleExportSubmit(e) {
+          function handleExportSubmit(e) {
             e.preventDefault();
+            
+            // Validate employee selection
+            if (!exportAllEmployeesCheckbox.checked && !selectedEmployeeIdsInput.value.trim()) {
+                alert('Please select at least one employee or check "Export All Employees"');
+                return;
+            }
+            
+            // Validate that at least one include option is checked
+            const includeCheckboxes = document.querySelectorAll('input[name^="include_"]');
+            const checkedCount = [...includeCheckboxes].filter(cb => cb.checked).length;
+            if (checkedCount === 0) {
+                alert('Please select at least one data type to include in the export');
+                return;
+            }
             
             // Show loading state
             const originalBtnContent = exportBtn.innerHTML;

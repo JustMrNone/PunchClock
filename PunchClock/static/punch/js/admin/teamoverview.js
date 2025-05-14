@@ -6,10 +6,19 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPage = 1;
     let itemsPerPage = 5;
     let sortDirection = 'desc'; // 'asc' for ascending, 'desc' for descending
+    let showAllDepartments = false; // Track whether to show all departments or just top 4
 
     // Load departments for the filter dropdown and get all employees
     loadDepartments();
     loadAllEmployees();
+    
+    // Add event listener for View All/Show Less button in department stats
+    document.getElementById('view-all-departments').addEventListener('click', function() {
+        showAllDepartments = !showAllDepartments; // Toggle the state
+        if (window.departmentHoursData) {
+            displayDepartmentStats(window.departmentHoursData, showAllDepartments);
+        }
+    });
 
     // Add event listener for department filter
     document.getElementById('department-filter').addEventListener('change', function() {
@@ -132,9 +141,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading employees:', error);
                 document.getElementById('no-employees-row').querySelector('td').textContent = 
                     'Error loading employee data. Please try again.';
-            });
-    }
-
+            });    }
+    
     // Function to load department statistics
     function loadDepartmentStatistics(departments) {
         // In a real application, you would fetch this data from an API
@@ -144,7 +152,9 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.department_hours) {
-                    displayDepartmentStats(data.department_hours);
+                    // Store department hours data for later use with the "View All" button
+                    window.departmentHoursData = data.department_hours;
+                    displayDepartmentStats(data.department_hours, showAllDepartments);
                 } else {
                     // If the API doesn't exist or fails, generate dummy data based on employees
                     const deptHours = {};
@@ -165,14 +175,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         percentage: totalHours ? ((deptHours[dept.id] || 0) / totalHours * 100) : 0
                     }));
 
-                    displayDepartmentStats(departmentHours);
+                    // Store department hours data for later use
+                    window.departmentHoursData = departmentHours;
+                    displayDepartmentStats(departmentHours, showAllDepartments);
                 }
             })
             .catch(error => {
                 console.error('Error loading department statistics:', error);
                 generateDummyDepartmentStats(departments);
-            });
-    }
+            });    }
 
     // Function to generate dummy department stats if API fails
     function generateDummyDepartmentStats(departments) {
@@ -194,12 +205,16 @@ document.addEventListener('DOMContentLoaded', function() {
             total_hours: deptHours[dept.id] || Math.floor(Math.random() * 100) + 30, // Fallback to random
             percentage: totalHours ? ((deptHours[dept.id] || 0) / totalHours * 100) : Math.floor(Math.random() * 40) + 10 // Fallback to random
         }));
-
-        displayDepartmentStats(departmentHours);
-    }
-
-    // Function to display department statistics
-    function displayDepartmentStats(departmentHours) {
+        
+        // Store department hours data for later use with the "View All" button
+        window.departmentHoursData = departmentHours;
+        
+        // Initially display only top 4 departments
+        displayDepartmentStats(departmentHours, showAllDepartments);    }
+      // Function to display department statistics
+    function displayDepartmentStats(departmentHours, showAll) {
+        // Default to false if showAll is not provided
+        showAll = showAll || false;
         const container = document.getElementById('department-stats-container');
         container.innerHTML = ''; // Clear loading message
 
@@ -209,8 +224,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Sort departments by hours
         const sortedDepts = [...departmentHours].sort((a, b) => b.total_hours - a.total_hours);
         
-        // Display each department
-        sortedDepts.forEach((dept, index) => {
+        // Determine how many departments to show
+        const deptsToShow = showAll ? sortedDepts.length : Math.min(4, sortedDepts.length);
+        
+        // Display departments
+        sortedDepts.slice(0, deptsToShow).forEach((dept, index) => {
             const colorIndex = index % colors.length;
             const color = colors[colorIndex];
             
@@ -230,6 +248,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // If no departments, show a message
         if (sortedDepts.length === 0) {
             container.innerHTML = '<p class="text-center text-gray-500">No department data available</p>';
+        }
+        
+        // Update the View All / Show Less button text
+        const viewAllBtn = document.getElementById('view-all-departments');
+        if (viewAllBtn) {
+            viewAllBtn.textContent = showAll ? "Show Less" : "View All";
         }
     }
 

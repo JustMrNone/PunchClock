@@ -55,10 +55,12 @@ urlpatterns = [
     path('api/time/today/', time_entries.GetTodayTimeEntriesView.as_view(), name='get_today_entries'),
     path('api/time/update-status/', time_entries.UpdateTimeEntryStatusView.as_view(), name='update_time_entry_status'),
     path('api/time/approve-all/', time_entries.ApproveAllTimeEntriesView.as_view(), name='approve_all_time_entries'),
-    
-    # Clear and undo operations
+      # Clear and undo operations
     path('api/time/clear/', time_entries.ClearTimeEntriesView.as_view(), name='clear_time_entries'),
     path('api/time/undo-clear/', time_entries.UndoClearTimeEntriesView.as_view(), name='undo_clear_time_entries'),
+    
+    # Dashboard stats endpoint
+    path('api/dashboard/stats/', time_views.DashboardStatsView.as_view(), name='dashboard_stats'),
     
     # Employee stats endpoint
     path('api/employees/stats/', time_entries.GetEmployeeStatsView.as_view(), name='get_employee_stats'),

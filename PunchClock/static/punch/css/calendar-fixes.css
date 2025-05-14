@@ -1,0 +1,24 @@
+/* Calendar date selection text color fix */
+.calendar-day.selected .text-sm.font-medium,
+.calendar-day.bg-indigo-50 .text-sm.font-medium {
+    color: #1f2937 !important; /* Dark gray color for better visibility */
+    font-weight: 700 !important; /* Make it bold when selected */
+}
+
+/* Ensure day numbers are visible in dark mode when selected */
+[data-theme='dark'] .calendar-day.selected .text-sm.font-medium,
+[data-theme='dark'] .calendar-day.bg-indigo-50 .text-sm.font-medium {
+    color: #f9fafb !important; /* Light color for dark mode */
+    font-weight: 700 !important; /* Make it bold when selected */
+}
+
+/* Make sure the day label (Sun, Mon, etc.) also stays visible when selected */
+.calendar-day.selected .text-xs.text-gray-500,
+.calendar-day.bg-indigo-50 .text-xs.text-gray-500 {
+    color: #4b5563 !important; /* Medium gray for day labels */
+}
+
+[data-theme='dark'] .calendar-day.selected .text-xs.text-gray-500,
+[data-theme='dark'] .calendar-day.bg-indigo-50 .text-xs.text-gray-500 {
+    color: #d1d5db !important; /* Light gray for day labels in dark mode */
+}
