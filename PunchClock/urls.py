@@ -48,14 +48,16 @@ urlpatterns = [
     path('api/profile-picture/get/', profile_views.GetProfilePictureView.as_view(), name='get_profile_picture'),# Employee profile picture endpoints    
     path('api/employee-profile-picture/', profile_views.EmployeeProfilePictureView.as_view(), name='employee_profile_picture'),
     path('api/employee-profile-picture/delete/<int:employee_id>/', profile_views.DeleteEmployeeProfilePictureView.as_view(), name='delete_employee_profile_picture'),
-    path('api/employees/<int:employee_id>/profile-picture/', profile_views.GetEmployeeProfilePictureView.as_view(), name='get_employee_profile_picture'),
-
-    # Time tracking endpoints
+    path('api/employees/<int:employee_id>/profile-picture/', profile_views.GetEmployeeProfilePictureView.as_view(), name='get_employee_profile_picture'),    # Time tracking endpoints
     path('api/time/punch/', time_views.PunchTimeView.as_view(), name='punch_time'),
     path('api/time/stats/', time_views.GetTimeStatisticsView.as_view(), name='time_stats'),
     path('api/time/stats/<int:employee_id>/', time_views.GetTimeStatisticsView.as_view(), name='employee_time_stats'),
     path('api/time/entries/<int:employee_id>/', time_views.GetEmployeeTimeEntriesView.as_view(), name='get_employee_time_entries'),
-    path('api/time/recent/', time_views.GetRecentActivitiesView.as_view(), name='get_recent_activities'),
+    path('api/time/recent/', time_views.GetRecentActivitiesView.as_view(), name='get_recent_activities'),    # Time entry CRUD endpoints
+    path('api/time/entry/create/', time_views.CreateTimeEntryView.as_view(), name='create_time_entry'),
+    path('api/time/entry/<int:entry_id>/', time_views.GetTimeEntryView.as_view(), name='get_time_entry'),
+    path('api/time/entry/<int:entry_id>/update/', time_views.UpdateTimeEntryView.as_view(), name='update_time_entry'),
+    path('api/time/entry/<int:entry_id>/delete/', time_views.DeleteTimeEntryView.as_view(), name='delete_time_entry'),
     # Today's time entries and approval endpoints
     path('api/time/today/', time_entries.GetTodayTimeEntriesView.as_view(), name='get_today_entries'),
     path('api/time/update-status/', time_entries.UpdateTimeEntryStatusView.as_view(), name='update_time_entry_status'),

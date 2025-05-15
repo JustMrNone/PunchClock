@@ -22,6 +22,10 @@ __all__ = [
     'DashboardStatsView',
     'GetTodayHoursView',
     'ResetDailyTrackingView',
+    'CreateTimeEntryView',
+    'GetTimeEntryView',
+    'UpdateTimeEntryView',
+    'DeleteTimeEntryView',
 ]
 
 @method_decorator(login_required, name='dispatch')
@@ -449,4 +453,286 @@ class ResetDailyTrackingView(View):
             })
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+# TimeEntry CRUD endpoints
+
+@method_decorator(login_required, name='dispatch')
+class CreateTimeEntryView(View):
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+            
+            # Required fields
+            date_str = data.get('date')
+            start_time_str = data.get('start_time')
+            
+            # Optional fields with defaults
+            end_time_str = data.get('end_time')
+            entry_type = data.get('entry_type', 'Regular Work Hours')
+            employee_id = data.get('employee_id')
+            
+            # Validate required fields
+            if not date_str or not start_time_str:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Date and start time are required'
+                }, status=400)
+            
+            # Parse the date and time
+            try:
+                date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+                start_time = datetime.strptime(start_time_str, '%H:%M').time()
+                end_time = datetime.strptime(end_time_str, '%H:%M').time() if end_time_str else None
+            except ValueError:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Invalid date or time format. Use YYYY-MM-DD for date and HH:MM for time.'
+                }, status=400)
+            
+            # Get the employee
+            if employee_id and request.user.is_staff:
+                # Admin creating entry for an employee
+                try:
+                    employee = Employee.objects.get(id=employee_id)
+                except Employee.DoesNotExist:
+                    return JsonResponse({
+                        'success': False, 
+                        'message': f'Employee with ID {employee_id} not found'
+                    }, status=404)
+            else:
+                # User creating entry for themselves
+                try:
+                    employee = Employee.objects.get(user=request.user)
+                except Employee.DoesNotExist:
+                    # If no employee record, create one
+                    if request.user.is_staff:
+                        employee = Employee.objects.create(
+                            user=request.user,
+                            admin=request.user,  # Admin is their own admin
+                            department=Department.objects.first(),  # Use first department or create one
+                            hire_date=timezone.now().date()
+                        )
+                    else:
+                        # Regular employee should have an admin
+                        admin_user = User.objects.filter(is_staff=True).first()
+                        employee = Employee.objects.create(
+                            user=request.user,
+                            admin=admin_user,
+                            department=Department.objects.first(),
+                            hire_date=timezone.now().date()
+                        )
+            
+            # Create the time entry
+            entry = TimeEntry.objects.create(
+                employee=employee,
+                date=date_obj,
+                start_time=start_time,
+                end_time=end_time,
+                entry_type=entry_type,
+                status='pending',  # Default status
+                session_id=data.get('session_id', f"manual-{timezone.now().timestamp()}"),
+                session_verified=True,  # Manual entries are verified by default
+                segment_index=data.get('segment_index', 0)
+            )
+            
+            # Make sure total_hours is calculated
+            entry.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Time entry created successfully',
+                'entry': {
+                    'id': entry.id,
+                    'date': entry.date.strftime('%Y-%m-%d'),
+                    'start_time': entry.start_time.strftime('%H:%M'),
+                    'end_time': entry.end_time.strftime('%H:%M') if entry.end_time else None,
+                    'total_hours': float(entry.total_hours),
+                    'entry_type': entry.entry_type,
+                    'status': entry.status,
+                    'created_at': entry.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'segment_index': entry.segment_index
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@method_decorator(login_required, name='dispatch')
+class GetTimeEntryView(View):
+    def get(self, request, entry_id):
+        try:
+            # Get the entry
+            try:
+                entry = TimeEntry.objects.get(id=entry_id)
+            except TimeEntry.DoesNotExist:
+                return JsonResponse({
+                    'success': False, 
+                    'message': f'Time entry with ID {entry_id} not found'
+                }, status=404)
+            
+            # Check if user has permission to view this entry
+            user = request.user
+            if entry.employee.user != user and not user.is_staff and entry.employee.admin != user:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'You do not have permission to view this time entry'
+                }, status=403)
+            
+            # Return the entry data
+            return JsonResponse({
+                'success': True,
+                'entry': {
+                    'id': entry.id,
+                    'employee_id': entry.employee.id,
+                    'employee_name': entry.employee.full_name,
+                    'date': entry.date.strftime('%Y-%m-%d'),
+                    'start_time': entry.start_time.strftime('%H:%M'),
+                    'end_time': entry.end_time.strftime('%H:%M') if entry.end_time else None,
+                    'total_hours': float(entry.total_hours),
+                    'entry_type': entry.entry_type,
+                    'status': entry.status,
+                    'created_at': entry.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'updated_at': entry.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'segment_index': entry.segment_index
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@method_decorator(login_required, name='dispatch')
+class UpdateTimeEntryView(View):
+    def put(self, request, entry_id):
+        try:
+            data = json.loads(request.body)
+            
+            # Get the entry
+            try:
+                entry = TimeEntry.objects.get(id=entry_id)
+            except TimeEntry.DoesNotExist:
+                return JsonResponse({
+                    'success': False, 
+                    'message': f'Time entry with ID {entry_id} not found'
+                }, status=404)
+            
+            # Check if user has permission to update this entry
+            user = request.user
+            if entry.employee.user != user and not user.is_staff and entry.employee.admin != user:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'You do not have permission to update this time entry'
+                }, status=403)
+            
+            # Update the fields if provided
+            if 'date' in data:
+                try:
+                    entry.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+                except ValueError:
+                    return JsonResponse({
+                        'success': False, 
+                        'message': 'Invalid date format. Use YYYY-MM-DD.'
+                    }, status=400)
+            
+            if 'start_time' in data:
+                try:
+                    entry.start_time = datetime.strptime(data['start_time'], '%H:%M').time()
+                except ValueError:
+                    return JsonResponse({
+                        'success': False, 
+                        'message': 'Invalid time format. Use HH:MM.'
+                    }, status=400)
+            
+            if 'end_time' in data:
+                if data['end_time']:
+                    try:
+                        entry.end_time = datetime.strptime(data['end_time'], '%H:%M').time()
+                    except ValueError:
+                        return JsonResponse({
+                            'success': False, 
+                            'message': 'Invalid time format. Use HH:MM.'
+                        }, status=400)
+                else:
+                    entry.end_time = None
+            
+            if 'entry_type' in data:
+                entry.entry_type = data['entry_type']
+            
+            if 'status' in data and request.user.is_staff:
+                # Only staff can update status
+                entry.status = data['status']
+            
+            if 'segment_index' in data:
+                entry.segment_index = data['segment_index']
+            
+            # Save the entry to recalculate total hours
+            entry.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Time entry updated successfully',
+                'entry': {
+                    'id': entry.id,
+                    'date': entry.date.strftime('%Y-%m-%d'),
+                    'start_time': entry.start_time.strftime('%H:%M'),
+                    'end_time': entry.end_time.strftime('%H:%M') if entry.end_time else None,
+                    'total_hours': float(entry.total_hours),
+                    'entry_type': entry.entry_type,
+                    'status': entry.status,
+                    'updated_at': entry.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'segment_index': entry.segment_index
+                }
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+    # Support for POST method for browsers that don't support PUT
+    def post(self, request, entry_id):
+        return self.put(request, entry_id)
+
+
+@method_decorator(login_required, name='dispatch')
+class DeleteTimeEntryView(View):
+    def delete(self, request, entry_id):
+        try:
+            # Get the entry
+            try:
+                entry = TimeEntry.objects.get(id=entry_id)
+            except TimeEntry.DoesNotExist:
+                return JsonResponse({
+                    'success': False, 
+                    'message': f'Time entry with ID {entry_id} not found'
+                }, status=404)
+            
+            # Check if user has permission to delete this entry
+            user = request.user
+            if entry.employee.user != user and not user.is_staff and entry.employee.admin != user:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'You do not have permission to delete this time entry'
+                }, status=403)
+            
+            # Store entry info for confirmation
+            entry_info = {
+                'id': entry.id,
+                'date': entry.date.strftime('%Y-%m-%d'),
+                'start_time': entry.start_time.strftime('%H:%M'),
+                'end_time': entry.end_time.strftime('%H:%M') if entry.end_time else None,
+                'total_hours': float(entry.total_hours)
+            }
+            
+            # Delete the entry
+            entry.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Time entry deleted successfully',
+                'deleted_entry': entry_info
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+    
+    # Support for POST method for browsers that don't support DELETE
+    def post(self, request, entry_id):
+        return self.delete(request, entry_id)
 
