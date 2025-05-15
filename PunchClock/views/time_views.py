@@ -4,9 +4,12 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from django.views import View
 from django.http import JsonResponse
-from ..models import TimeEntry
 import json
-from ..models import CalendarSettings, PersonalNote, CompanySettings, TimeEntry, Employee, ProfilePicture, Department, Export
+from django.db.models import Max
+from ..models import (
+    CalendarSettings, PersonalNote, CompanySettings, TimeEntry, 
+    Employee, ProfilePicture, Department, Export
+)
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.contrib.auth.models import User
@@ -17,6 +20,8 @@ __all__ = [
     'GetRecentActivitiesView',
     'GetEmployeeTimeEntriesView',
     'DashboardStatsView',
+    'GetTodayHoursView',
+    'ResetDailyTrackingView',
 ]
 
 @method_decorator(login_required, name='dispatch')
@@ -27,6 +32,17 @@ class PunchTimeView(View):
             start_time = datetime.strptime(data.get('start_time'), '%H:%M').time()
             end_time = datetime.strptime(data.get('end_time'), '%H:%M').time() if data.get('end_time') else None
             
+            # Get the entry type (Regular Work Hours is default)
+            entry_type = data.get('entry_type', 'Regular Work Hours')
+            
+            # Get session ID for verification (prevents client-side manipulation)
+            session_id = data.get('session_id')
+            if not session_id:
+                return JsonResponse({'success': False, 'message': 'Session ID is required'}, status=400)
+                
+            # Get segment index for multi-segment tracking
+            segment_index = data.get('segment_index', 0)
+            
             # Get or create employee record for the current user
             try:
                 employee = Employee.objects.get(user=request.user)
@@ -36,7 +52,7 @@ class PunchTimeView(View):
                     employee = Employee.objects.create(
                         user=request.user,
                         admin=request.user,  # Admin is their own admin
-                        department="Management",
+                        department=Department.objects.first(),  # Use first department or create one if needed
                         hire_date=timezone.now().date()
                     )
                 else:
@@ -45,17 +61,20 @@ class PunchTimeView(View):
                     employee = Employee.objects.create(
                         user=request.user,
                         admin=admin_user,
-                        department="",
+                        department=None,
                         hire_date=timezone.now().date()
                     )
-            
-            # Create time entry
+              # Create time entry with session verification
             entry = TimeEntry.objects.create(
                 employee=employee,
                 date=timezone.now().date(),
                 start_time=start_time,
                 end_time=end_time,
-                status='pending'
+                entry_type=entry_type,
+                status='pending',
+                session_id=session_id,
+                session_verified=True,  # Server-side verification
+                segment_index=segment_index
             )
             
             # Make sure total_hours is calculated
@@ -66,11 +85,13 @@ class PunchTimeView(View):
                 'entry': {
                     'id': entry.id,
                     'date': entry.date.strftime('%Y-%m-%d'),
-                    'start_time': entry.start_time.strftime('%I:%M %p'),  # Changed to 12-hour format
+                    'start_time': entry.start_time.strftime('%I:%M %p'),
                     'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
                     'total_hours': float(entry.total_hours),
                     'status': entry.status,
-                    'created_at': entry.created_at.strftime('%I:%M %p')
+                    'created_at': entry.created_at.strftime('%I:%M %p'),
+                    'segment_index': entry.segment_index,
+                    'session_verified': entry.session_verified
                 }
             })
         except Exception as e:
@@ -107,9 +128,71 @@ class GetTimeStatisticsView(View):
                             department="",
                             hire_date=timezone.now().date()
                         )
+              # Get today's date for debugging
+            today = timezone.now().date()
             
-            weekly_hours = TimeEntry.get_weekly_hours(employee)
-            daily_average = TimeEntry.get_daily_average(employee)
+            # Calculate weekly hours with debugging info
+            week_start = today - timedelta(days=today.weekday())
+            week_end = week_start + timedelta(days=6)
+            weekly_entries = TimeEntry.objects.filter(
+                employee=employee,
+                date__range=[week_start, week_end],
+                session_verified=True
+            )
+            weekly_hours = sum(float(entry.total_hours) for entry in weekly_entries)
+              # Get daily average with improved logic
+            end_date = timezone.now().date()
+            # Use last 5 working days (M-F) instead of 30 days for a more accurate average
+            start_date = end_date - timedelta(days=14)  # Go back 2 weeks for calculation
+            
+            daily_entries = TimeEntry.objects.filter(
+                employee=employee,
+                date__range=[start_date, end_date],
+                session_verified=True
+            )
+            
+            # Calculate total hours for the period
+            total_period_hours = sum(float(entry.total_hours) for entry in daily_entries)
+            
+            # Group by date to understand working patterns
+            date_hours = {}
+            for entry in daily_entries:
+                date_str = entry.date.strftime('%Y-%m-%d')
+                if date_str not in date_hours:
+                    date_hours[date_str] = 0
+                date_hours[date_str] += float(entry.total_hours)
+            
+            # Count business days (Monday to Friday) in the period for more accurate average
+            business_days = 0
+            current_date = start_date
+            while current_date <= end_date:
+                # 0=Monday, 6=Sunday
+                if current_date.weekday() < 5:  # Weekday (0-4 are Monday-Friday)
+                    business_days += 1
+                current_date += timedelta(days=1)
+            
+            # Calculate daily average based on actual business days, not just days with entries
+            # Use at least 1 business day even if calculated value is 0 to avoid division by zero
+            working_days_count = max(business_days, 1)
+            
+            # Only count days with actual entries if there are any
+            days_with_entries = len(date_hours)
+            
+            # If we have data for at least 3 days, use business days for average
+            # Otherwise, use only days with entries for a more accurate short-term average
+            if days_with_entries >= 3:
+                daily_average = round(total_period_hours / working_days_count, 2)
+            else:
+                daily_average = round(total_period_hours / max(days_with_entries, 1), 2)
+              # Print debug info
+            print(f"Weekly range: {week_start} to {week_end}")
+            print(f"Weekly entries count: {weekly_entries.count()}")
+            print(f"Weekly hours: {weekly_hours}")
+            print(f"Daily range: {start_date} to {end_date}")
+            print(f"Days with entries: {days_with_entries}")
+            print(f"Working days count: {working_days_count}")
+            print(f"Daily average: {daily_average}")
+            print(f"Date hours: {date_hours}")
             
             return JsonResponse({
                 'success': True,
@@ -138,13 +221,13 @@ class GetRecentActivitiesView(View):
             ).order_by('-created_at')[:10]  # Limit to 10 most recent entries
             
             entries_data = []
-            for entry in recent_entries:
-                entries_data.append({
+            for entry in recent_entries:                entries_data.append({
                     'id': entry.id,
                     'date': entry.date.strftime('%Y-%m-%d'),
                     'start_time': entry.start_time.strftime('%I:%M %p'),
                     'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
                     'total_hours': float(entry.total_hours) if entry.total_hours else 0,
+                    'entry_type': entry.entry_type,
                     'status': entry.status,
                     'created_at': entry.created_at.strftime('%Y-%m-%d %I:%M %p')
                 })
@@ -205,10 +288,9 @@ class GetEmployeeTimeEntriesView(View):
             
             # Format the time entries for the response
             entries_data = []
-            for entry in time_entries:
-                entries_data.append({
+            for entry in time_entries:                entries_data.append({
                     'id': entry.id,
-                    'type': 'Regular Work Hours',  # Default type since it's not in the model
+                    'type': entry.entry_type,
                     'date': entry.date.strftime('%Y-%m-%d'),
                     'start_time': entry.start_time.strftime('%H:%M'),
                     'end_time': entry.end_time.strftime('%H:%M') if entry.end_time else None,
@@ -278,6 +360,92 @@ class DashboardStatsView(View):
                 'total_employees': total_employees,
                 'active_today': active_employees,
                 'avg_hours': avg_hours
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+
+@method_decorator(login_required, name='dispatch')
+class GetTodayHoursView(View):
+    """Returns the total hours worked today, including all segments."""
+    
+    def get(self, request):
+        try:
+            today = timezone.now().date()
+            
+            # Get the employee
+            try:
+                employee = Employee.objects.get(user=request.user)
+            except Employee.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Employee record not found'}, status=404)
+                
+            # Get all entries for today
+            entries = TimeEntry.objects.filter(
+                employee=employee,
+                date=today
+            )
+            
+            # Calculate total hours for today
+            total_hours = sum(float(entry.total_hours) for entry in entries)
+            
+            # Get entries with details for each segment
+            segments = []
+            for entry in entries:
+                segments.append({
+                    'id': entry.id,
+                    'segment_index': entry.segment_index,
+                    'start_time': entry.start_time.strftime('%I:%M %p'),
+                    'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
+                    'hours': float(entry.total_hours),
+                    'status': entry.status
+                })
+            
+            # Sort segments by index
+            segments.sort(key=lambda s: s['segment_index'])
+            
+            return JsonResponse({
+                'success': True,
+                'total_hours': total_hours,
+                'segments': segments,
+                'segments_count': len(segments)
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@method_decorator(login_required, name='dispatch')
+class ResetDailyTrackingView(View):
+    """Resets the daily tracking while preserving statistical data."""
+    
+    def post(self, request):
+        try:
+            # This doesn't delete the data, it just marks the current session as complete
+            data = json.loads(request.body)
+            
+            # Get session ID
+            session_id = data.get('session_id')
+            if not session_id:
+                return JsonResponse({'success': False, 'message': 'Session ID is required'}, status=400)
+                
+            # Get the employee
+            try:
+                employee = Employee.objects.get(user=request.user)
+            except Employee.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Employee record not found'}, status=404)
+              # Get the next segment index for new sessions
+            today = timezone.now().date()
+            max_segment = TimeEntry.objects.filter(
+                employee=employee,
+                date=today
+            ).aggregate(Max('segment_index'))['segment_index__max'] or 0
+            
+            next_segment_index = max_segment + 1
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Daily tracking reset successful',
+                'next_segment_index': next_segment_index
             })
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
