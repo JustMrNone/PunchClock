@@ -124,6 +124,9 @@ document.addEventListener('DOMContentLoaded', function () {
         fetch('/api/time/today/')
             .then(response => response.json())
             .then(data => {
+                // Add debug logging
+                console.log('Today time entries:', data);
+
                 if (data.success) {
                     const tableBody = document.getElementById('timeEntryTable');
                     const noEntriesRow = document.getElementById('noEntriesRow');
@@ -196,10 +199,9 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(error => {
             console.error('Error updating time entry:', error);
-            showNotification(`Failed to ${status} time entry. Please try again.`, 'error');
         });
     }
-    
+
     // Function to approve all pending time entries
     function approveAllPendingEntries() {
         const csrfToken = getCsrfToken();
@@ -309,10 +311,28 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 3000);
     }
 
+    // Add this helper function before displayTimeEntries
+    function getEntryTypeBadgeClass(entryType) {
+        switch ((entryType || '').toLowerCase()) {
+            case 'regular work hours':
+                return 'bg-blue-100 text-blue-800';
+            case 'overtime':
+                return 'bg-purple-100 text-purple-800';
+            case 'meeting':
+                return 'bg-green-100 text-green-800';
+            case 'training':
+                return 'bg-yellow-100 text-yellow-800';
+            case 'other':
+                return 'bg-gray-100 text-gray-800';
+            default:
+                return 'bg-blue-100 text-blue-800';
+        }
+    }
+
     // Function to display time entries in the table
     function displayTimeEntries(entries) {
         const tableBody = document.getElementById('timeEntryTable');
-        
+        tableBody.innerHTML = '';
         entries.forEach(entry => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-gray-50';
@@ -331,6 +351,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             entry.status === 'rejected' ? 'bg-red-100 text-red-800' : 
                             'bg-yellow-100 text-yellow-800';
 
+            // Entry type badge
+            const entryType = entry.entry_type || 'Regular Work Hours';
+            const entryTypeClass = getEntryTypeBadgeClass(entryType);
+            const entryTypeBadge = `<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${entryTypeClass}">${entryType}</span>`;
+
             tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
@@ -343,11 +368,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Today</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.date}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.start_time}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.end_time || 'N/A'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.total_hours.toFixed(2)} hours</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${parseFloat(entry.total_hours).toFixed(2)} hours</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${entry.timestamp || entry.created_at || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap">${entryTypeBadge}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
                         ${entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
@@ -361,7 +387,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 </td>
             `;
-            
             tableBody.appendChild(tr);
         });
         

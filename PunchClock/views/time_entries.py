@@ -74,7 +74,7 @@ class GetTodayTimeEntriesView(View):
                     employee=employee,
                     date=today
                 ).select_related('employee', 'employee__department')
-            
+                
             entries_data = []
             for entry in time_entries:
                 department_name = entry.employee.department.name if entry.employee.department else 'N/A'
@@ -84,12 +84,13 @@ class GetTodayTimeEntriesView(View):
                     'employee_name': entry.employee.full_name,
                     'department': department_name,
                     'date': entry.date.strftime('%Y-%m-%d'),
-                    'start_time': entry.start_time.strftime('%I:%M %p'),
-                    'end_time': entry.end_time.strftime('%I:%M %p') if entry.end_time else None,
+                    'start_time': entry.start_time.strftime('%H:%M'),
+                    'end_time': entry.end_time.strftime('%H:%M') if entry.end_time else None,
                     'total_hours': float(entry.total_hours),
                     'status': entry.status,
-                    'created_at': entry.created_at.strftime('%I:%M %p'),
-                    'timestamp': entry.created_at.strftime('%I:%M %p')
+                    'entry_type': entry.entry_type,  # Ensure this is included
+                    'created_at': entry.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'timestamp': entry.created_at.strftime('%Y-%m-%d %H:%M:%S')
                 })
             
             return JsonResponse({

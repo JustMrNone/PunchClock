@@ -1148,6 +1148,12 @@
                             const sortedEntries = data.entries.sort((a, b) => {
                                 return a.start_time.localeCompare(b.start_time);
                             });
+                              // Debug log entry types
+                            console.log('Entry types from API:', sortedEntries.map(entry => ({
+                                id: entry.id,
+                                type: entry.type,
+                                entry_type: entry.entry_type
+                            })));
                             
                             // Render each entry
                             sortedEntries.forEach(entry => {
@@ -1187,16 +1193,17 @@
                 // Calculate duration
                 const startTime = entry.start_time;
                 const endTime = entry.end_time;
-                const totalHours = entry.total_hours || calculateHours(startTime, endTime);
-                
-                // Create entry type badge
-                const badgeColor = getEntryTypeBadgeColor(entry.entry_type);
-                
+                const totalHours = entry.total_hours || calculateHours(startTime, endTime);                // Create entry type badge
+                // Prioritize entry_type field from API and fall back to type field
+                const entryTypeLabel = entry.entry_type || entry.type || 'Regular Work Hours';
+                const badgeColor = getEntryTypeBadgeColor(entryTypeLabel);
+                const badgeHtml = `<span class="px-2 py-1 bg-${badgeColor}-100 text-${badgeColor}-800 text-xs font-medium rounded-full mr-2">${entryTypeLabel}</span>`;
+
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
                             <div class="flex items-center">
-                                <span class="px-2 py-1 bg-${badgeColor}-100 text-${badgeColor}-800 text-xs font-medium rounded-full mr-2">${entry.entry_type || 'Regular'}</span>
+                                ${badgeHtml}
                                 <span class="text-sm font-medium">${startTime} - ${endTime}</span>
                             </div>
                             <p class="text-sm text-gray-600 mt-1">${entry.notes || 'No notes'}</p>
@@ -1264,19 +1271,29 @@
                 }
                 
                 return hours + (minutes / 60);
-            }
-            
-            // Function to get badge color based on entry type
+            }            // Function to get badge color based on entry type
             function getEntryTypeBadgeColor(entryType) {
+                // Convert to string and trim to handle potential null values
+                const type = (entryType || '').trim();
+                
+                // Add all possible entry types including lowercase variations
                 const typeColors = {
+                    'Regular Work Hours': 'blue',
                     'Regular': 'blue',
+                    'regular work hours': 'blue',
+                    'regular': 'blue',
                     'Overtime': 'purple',
+                    'overtime': 'purple',
                     'Meeting': 'green',
+                    'meeting': 'green',
                     'Training': 'yellow',
-                    'Other': 'gray'
+                    'training': 'yellow',
+                    'Other': 'gray',
+                    'other': 'gray'
                 };
                 
-                return typeColors[entryType] || 'blue';
+                console.log('Badge color for entry type:', type, '→', typeColors[type] || 'blue');
+                return typeColors[type] || 'blue';
             }
             
             // Function to edit a time entry
@@ -1296,15 +1313,21 @@
                     .then(data => {
                         if (data.success && data.entry) {
                             const entry = data.entry;
-                            
-                            // Update form for editing
+                              // Update form for editing
                             entryModalTitle.textContent = 'Edit Time Entry';
                             entryIdField.value = entry.id;
                             entryDateField.value = entry.date;
                             startTimeField.value = entry.start_time;
-                            endTimeField.value = entry.end_time;
-                            entryTypeField.value = entry.entry_type || 'Regular';
+                            endTimeField.value = entry.end_time;                            // Prioritize entry_type field from API and fall back to type field
+                            entryTypeField.value = entry.entry_type || entry.type || 'Regular Work Hours';
                             entryNotesField.value = entry.notes || '';
+                            
+                            // Debug log entry type when editing
+                            console.log('Editing entry type:', {
+                                type: entry.type,
+                                entry_type: entry.entry_type,
+                                "value being used": entry.entry_type || entry.type || 'Regular Work Hours'
+                            });
                             
                             // Set edit mode
                             isEditMode = true;
