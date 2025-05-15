@@ -306,13 +306,20 @@
                             employee_id: selectedEmployeeId,
                             date: selectedDate
                         })
-                    })
-                    .then(response => response.json())
+                    })                    .then(response => response.json())
                     .then(data => {
                         if (data.success) {
                             showSuccessNotification('All entries deleted successfully');
-                            // Refresh the time entries display
-                            loadTimeEntriesForDate(selectedDate);
+                            // Clear the entries container immediately
+                            const timeEntriesContainer = document.getElementById('time-entries-container');
+                            const noEntriesMessage = document.getElementById('no-entries-message');
+                            if (timeEntriesContainer) {
+                                timeEntriesContainer.innerHTML = '';
+                            }
+                            if (noEntriesMessage) {
+                                noEntriesMessage.textContent = 'No time entries for selected date';
+                                noEntriesMessage.classList.remove('hidden');
+                            }
                         } else {
                             showErrorNotification(data.message || 'Failed to delete entries');
                         }
@@ -1225,8 +1232,7 @@
                 // Add event listeners for edit and delete buttons
                 card.querySelector('.edit-entry-btn').addEventListener('click', function() {
                     editTimeEntry(entry.id);
-                });
-                  card.querySelector('.delete-entry-btn').addEventListener('click', function() {
+                });                card.querySelector('.delete-entry-btn').addEventListener('click', function() {
                     // Create modal overlay
                     const modalOverlay = document.createElement('div');
                     modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center';
@@ -1234,17 +1240,32 @@
                     // Create modal content
                     const modalContent = document.createElement('div');
                     modalContent.className = 'bg-white rounded-lg p-6 max-w-sm mx-4';
+                    
+                    // Store the entry ID as data attribute for easy access
+                    const entryIdToDelete = entry.id;
+                    
                     modalContent.innerHTML = `
                         <h3 class="text-lg font-medium mb-4">Delete Time Entry</h3>
                         <p class="text-gray-600 mb-6">Are you sure you want to delete this time entry? This action cannot be undone.</p>
                         <div class="flex justify-end space-x-3">
-                            <button class="px-4 py-2 text-gray-600 hover:text-gray-800" onclick="this.closest('.fixed').remove()">Cancel</button>
-                            <button class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700" onclick="deleteTimeEntry('${entry.id}'); this.closest('.fixed').remove()">Delete</button>
+                            <button class="cancel-delete-btn px-4 py-2 text-gray-600 hover:text-gray-800">Cancel</button>
+                            <button class="confirm-delete-btn px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
                         </div>
                     `;
                     
                     modalOverlay.appendChild(modalContent);
                     document.body.appendChild(modalOverlay);
+                    
+                    // Add event listeners to the buttons using proper event handling
+                    modalContent.querySelector('.cancel-delete-btn').addEventListener('click', function() {
+                        modalOverlay.remove();
+                    });
+                    
+                    modalContent.querySelector('.confirm-delete-btn').addEventListener('click', function() {
+                        // Call the delete function directly (it's in the proper scope now)
+                        window.deleteTimeEntry(entryIdToDelete);
+                        modalOverlay.remove();
+                    });
                     
                     // Click outside to close
                     modalOverlay.addEventListener('click', function(e) {
@@ -1342,53 +1363,96 @@
                         console.error('Error loading time entry details:', error);
                         showErrorNotification("An error occurred while loading time entry details");
                     });
+            }              // Create deleteTimeEntry in the proper scope
+            function createDeleteTimeEntryFunction(timeEntriesContainerRef, noEntriesMessageRef) {
+                // Return a function that has access to the proper scoped variables
+                return function(entryId) {
+                    console.log(`Deleting time entry ${entryId}`);
+                    
+                    // Get the employee ID
+                    const employeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
+                    if (!employeeId) {
+                        showErrorNotification("No employee selected");
+                        return;
+                    }
+                    
+                    // Get CSRF token for DELETE request
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+                    
+                    // Show loading indicator on the entry
+                    const entryElement = document.querySelector(`[data-entry-id="${entryId}"]`);
+                    if (entryElement) {
+                        // Add a "deleting" class to show visual feedback
+                        entryElement.classList.add('opacity-50');
+                        // Add a spinner icon
+                        const actionsDiv = entryElement.querySelector('.flex.space-x-1');
+                        if (actionsDiv) {
+                            // Save original content for restoration if needed
+                            actionsDiv.dataset.originalContent = actionsDiv.innerHTML;
+                            actionsDiv.innerHTML = '<i class="fas fa-spinner fa-spin text-gray-600"></i>';
+                        }
+                    }
+                    
+                    // Make API request to delete the entry
+                    fetch(`/api/time/entry/${entryId}/delete/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        credentials: 'same-origin'  // Added to ensure cookies are sent
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Show success notification
+                            showSuccessNotification("Time entry deleted successfully");
+                            
+                            // Remove the entry directly from the UI without reloading
+                            if (entryElement) {
+                                // Add a fade-out animation
+                                entryElement.style.transition = "opacity 0.3s, transform 0.3s";
+                                entryElement.style.opacity = "0";
+                                entryElement.style.transform = "translateX(20px)";
+                                
+                                // Remove from DOM after animation completes
+                                setTimeout(() => {
+                                    entryElement.remove();
+                                    
+                                    // Check if there are no more entries and show message if needed
+                                    if (timeEntriesContainerRef.children.length === 0 && noEntriesMessageRef) {
+                                        noEntriesMessageRef.textContent = 'No time entries for selected date';
+                                        noEntriesMessageRef.classList.remove('hidden');
+                                    }
+                                }, 300);
+                            }
+                        } else {
+                            throw new Error(data.message || "Failed to delete time entry");
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting time entry:', error);
+                        showErrorNotification(error.message || "An error occurred while deleting the time entry");
+                        
+                        // Restore the entry to normal state
+                        if (entryElement) {
+                            entryElement.classList.remove('opacity-50');
+                            const actionsDiv = entryElement.querySelector('.flex.space-x-1');
+                            if (actionsDiv && actionsDiv.dataset.originalContent) {
+                                actionsDiv.innerHTML = actionsDiv.dataset.originalContent;
+                            }
+                        }
+                    });
+                };
             }
             
-            // Function to delete a time entry
-            window.deleteTimeEntry = function(entryId) {
-                console.log(`Deleting time entry ${entryId}`);
-                
-                // Get the employee ID
-                const employeeId = localStorage.getItem(EMPLOYEE_STORAGE_KEY);
-                if (!employeeId) {
-                    showErrorNotification("No employee selected");
-                    return;
-                }
-                
-                // Get CSRF token for DELETE request
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-                
-                // Make API request to delete the entry
-                fetch(`/api/time/entry/${entryId}/delete/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    credentials: 'same-origin'  // Added to ensure cookies are sent
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Show success notification
-                        showSuccessNotification("Time entry deleted successfully");
-                        
-                        // Reload entries for the selected date
-                        loadTimeEntriesForDate(selectedDate, employeeId);
-                    } else {
-                        throw new Error(data.message || "Failed to delete time entry");
-                    }
-                })
-                .catch(error => {
-                    console.error('Error deleting time entry:', error);
-                    showErrorNotification(error.message || "An error occurred while deleting the time entry");
-                });
-            };
+            // Create the deleteTimeEntry function with proper scope
+            window.deleteTimeEntry = createDeleteTimeEntryFunction(timeEntriesContainer, noEntriesMessage);
             
             // Function to reset the entry form
             function resetEntryForm() {
