@@ -194,8 +194,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         })
         .catch(error => console.error('Error saving calendar settings:', error));
-    }
-    function renderCalendar(year, month) {
+    }    function renderCalendar(year, month) {
         calendarGrid.innerHTML = '';
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const firstDayOfMonth = new Date(year, month, 1).getDay();
@@ -204,8 +203,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Update the month/year display
         const monthYearDisplay = document.querySelector('.date');
+        const monthButton = document.getElementById('month-display-btn');
         const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        
+        // Set the header month/year display
         monthYearDisplay.textContent = `${months[month]} ${year}`;
+        
+        // Update month button text - show "This Month" for current month, or month name otherwise
+        const nowMonth = new Date().getMonth();
+        const nowYear = new Date().getFullYear();
+        if (month === nowMonth && year === nowYear) {
+            monthButton.textContent = 'This Month';
+            monthButton.classList.add('bg-indigo-100', 'text-indigo-700');
+            monthButton.classList.remove('bg-gray-100', 'text-gray-700');
+        } else {
+            monthButton.textContent = months[month];
+            monthButton.classList.add('bg-gray-100', 'text-gray-700');
+            monthButton.classList.remove('bg-indigo-100', 'text-indigo-700');
+        }
 
         // Add empty cells for days before the first day of the month
         for (let i = 0; i < firstDayOfMonth; i++) {
@@ -319,6 +334,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Handle Today button click
     todayBtn.addEventListener('click', function() {
+        const today = new Date();
+        currentDisplayMonth = today.getMonth();
+        currentDisplayYear = today.getFullYear();
+        renderCalendar(currentDisplayYear, currentDisplayMonth);
+    });
+
+    // Month button handler - return to current month
+    document.getElementById('month-display-btn').addEventListener('click', function() {
         const today = new Date();
         currentDisplayMonth = today.getMonth();
         currentDisplayYear = today.getFullYear();
