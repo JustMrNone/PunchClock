@@ -218,4 +218,27 @@
     </div>
 </div>
 
+<!-- Include Data Validation Modal -->
+<div id="include-data-modal" class="fixed inset-0 bg-gray-800 bg-opacity-50 items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-gray-800">Required Data Selection</h3>
+            <button id="close-include-data-modal" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="mb-6">
+            <div class="flex items-center justify-center mb-4">
+                <i class="fas fa-exclamation-circle text-amber-500 text-4xl"></i>
+            </div>
+            <p class="text-gray-600 text-center">Please select at least one type of data to include in your export.</p>
+        </div>
+        
+        <div class="flex justify-end">
+            <button type="button" id="confirm-include-data" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">OK</button>
+        </div>
+    </div>
+</div>
+
 <script src="{% static 'punch/js/admin/export.js' %}"></script>

@@ -332,27 +332,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectedEmployeesSummary.querySelector('span').textContent = 
                     `${selectedIds.length} employee${selectedIds.length !== 1 ? 's' : ''} selected`;
             }
-        }
-        
-        // Validation function to ensure at least one include checkbox is checked
+        }        // Validation function to ensure at least one include checkbox is checked
         function validateIncludeCheckboxes() {
             const includeCheckboxes = document.querySelectorAll('input[name^="include_"]');
             const checkedCount = [...includeCheckboxes].filter(cb => cb.checked).length;
             
-            // If none are checked, re-check the first one
+            // If none are checked, show the modal
             if (checkedCount === 0) {
-                includeCheckboxes[0].checked = true;
-                alert('At least one data type must be selected for export.');
+                const includeDataModal = document.getElementById('include-data-modal');
+                includeDataModal.classList.remove('hidden');
+                includeDataModal.classList.add('flex');
+                return false;
             }
-        }
-          function handleDateRangeChange() {
+            return true;
+        }function handleDateRangeChange() {
             const selectedValue = dateRangePreset.value;
             
             const today = new Date();
             let startDate, endDate;
             
-            // If custom range is selected, don't overwrite the existing dates
             if (selectedValue === 'custom') {
+                customDateFields.classList.remove('hidden');
                 // If the date fields are empty, set them to a default (current week)
                 if (!startDateInput.value || !endDateInput.value) {
                     startDate = new Date(today);
@@ -364,6 +364,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 return;
             }
+            
+            // Show custom date fields for all options
+            customDateFields.classList.remove('hidden');
             
             switch (selectedValue) {
                 case 'this-week':
@@ -539,9 +542,29 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 })
                 .catch(error => console.error('Error loading recent exports:', error));
-        }
-          function handlePreviewData(e) {
-            e.preventDefault();
+        }          function handlePreviewData(e) {
+            if (e) {
+                e.preventDefault();
+            }
+            
+            // Validate include data options
+            if (!validateIncludeCheckboxes()) {
+                return;
+            }
+            
+            // Validate date range
+            const startDate = new Date(startDateInput.value);
+            const endDate = new Date(endDateInput.value);
+            
+            if (!startDateInput.value || !endDateInput.value) {
+                alert('Please select both start and end dates');
+                return;
+            }
+            
+            if (endDate < startDate) {
+                alert('End date must be after start date');
+                return;
+            }
             
             // Validate employee selection
             if (!exportAllEmployeesCheckbox.checked && !selectedEmployeeIdsInput.value.trim()) {
@@ -666,9 +689,22 @@ document.addEventListener('DOMContentLoaded', function() {
             return header.split('_')
                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                 .join(' ');
-        }
-          function handleExportSubmit(e) {
+        }          function handleExportSubmit(e) {
             e.preventDefault();
+            
+            // Validate date range
+            const startDate = new Date(startDateInput.value);
+            const endDate = new Date(endDateInput.value);
+            
+            if (!startDateInput.value || !endDateInput.value) {
+                alert('Please select both start and end dates');
+                return;
+            }
+            
+            if (endDate < startDate) {
+                alert('End date must be after start date');
+                return;
+            }
             
             // Validate employee selection
             if (!exportAllEmployeesCheckbox.checked && !selectedEmployeeIdsInput.value.trim()) {
@@ -677,10 +713,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Validate that at least one include option is checked
-            const includeCheckboxes = document.querySelectorAll('input[name^="include_"]');
-            const checkedCount = [...includeCheckboxes].filter(cb => cb.checked).length;
-            if (checkedCount === 0) {
-                alert('Please select at least one data type to include in the export');
+            if (!validateIncludeCheckboxes()) {
                 return;
             }
             
@@ -861,4 +894,44 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         handleExportSubmit(e);
     });
+    
+    // Set up date range change handlers
+        dateRangePreset.addEventListener('change', function() {
+            handleDateRangeChange();
+            if (previewContainer.classList.contains('hidden') === false) {
+                handlePreviewData();
+            }
+        });
+
+        startDateInput.addEventListener('change', function() {
+            if (previewContainer.classList.contains('hidden') === false) {
+                handlePreviewData();
+            }
+        });
+
+        endDateInput.addEventListener('change', function() {
+            if (previewContainer.classList.contains('hidden') === false) {
+                handlePreviewData();
+            }
+        });
+    
+        // Set up include data modal controls
+        const includeDataModal = document.getElementById('include-data-modal');
+        const closeIncludeDataModalBtn = document.getElementById('close-include-data-modal');
+        const confirmIncludeDataBtn = document.getElementById('confirm-include-data');
+
+        function closeIncludeDataModal() {
+            includeDataModal.classList.remove('flex');
+            includeDataModal.classList.add('hidden');
+        }
+
+        closeIncludeDataModalBtn.addEventListener('click', closeIncludeDataModal);
+        confirmIncludeDataBtn.addEventListener('click', closeIncludeDataModal);
+
+        // Close modal if clicking outside
+        includeDataModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeIncludeDataModal();
+            }
+        });
     });
