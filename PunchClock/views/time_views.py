@@ -269,26 +269,45 @@ class GetEmployeeTimeEntriesView(View):
                     'success': False,
                     'message': 'You do not have permission to view this employee\'s time entries'
                 }, status=403)
-            
-            # Get the date from query params, default to today
+              # Get dates from query params
+            start_date = request.GET.get('start_date')
+            end_date = request.GET.get('end_date')
             date_param = request.GET.get('date')
+            
+            # If specific date is provided, use that
             if date_param:
                 try:
-                    # Parse the date from the query parameter
                     entry_date = datetime.strptime(date_param, '%Y-%m-%d').date()
+                    time_entries = TimeEntry.objects.filter(
+                        employee=employee,
+                        date=entry_date
+                    ).order_by('-created_at')
                 except ValueError:
                     return JsonResponse({
                         'success': False,
                         'message': 'Invalid date format. Please use YYYY-MM-DD.'
                     }, status=400)
+            # If date range is provided, use that
+            elif start_date and end_date:
+                try:
+                    start = datetime.strptime(start_date, '%Y-%m-%d').date()
+                    end = datetime.strptime(end_date, '%Y-%m-%d').date()
+                    time_entries = TimeEntry.objects.filter(
+                        employee=employee,
+                        date__range=[start, end]
+                    ).order_by('-created_at')
+                except ValueError:
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Invalid date format. Please use YYYY-MM-DD.'
+                    }, status=400)
+            # Default to today
             else:
                 entry_date = timezone.now().date()
-            
-            # Get all time entries for the employee on the specified date
-            time_entries = TimeEntry.objects.filter(
-                employee=employee,
-                date=entry_date
-            ).order_by('-created_at')
+                time_entries = TimeEntry.objects.filter(
+                    employee=employee,
+                    date=entry_date
+                ).order_by('-created_at')
             
             # Format the time entries for the response
             entries_data = []
@@ -347,17 +366,24 @@ class DashboardStatsView(View):
                 employee__in=managed_employees,
                 date=today
             ).values('employee').distinct().count()
-            # Do NOT add 1 for admin, since admin is already in Employee table if they exist
-
-            # Calculate average hours per employee
+            # Do NOT add 1 for admin, since admin is already in Employee table if they exist            # Calculate average hours per employee
             avg_hours = 0
+            active_employee_hours = {}
             entries = TimeEntry.objects.filter(
                 employee__in=managed_employees,
                 date=today
             )
-            if entries.exists():
-                total_hours = sum(float(entry.total_hours) for entry in entries if entry.total_hours)
-                avg_hours = round(total_hours / entries.count(), 1) if entries.count() > 0 else 0
+            
+            # Group hours by employee
+            for entry in entries:
+                if entry.employee_id not in active_employee_hours:
+                    active_employee_hours[entry.employee_id] = 0
+                active_employee_hours[entry.employee_id] += float(entry.total_hours) if entry.total_hours else 0
+
+            # Calculate average of active employees only
+            if active_employee_hours:
+                total_employee_hours = sum(active_employee_hours.values())
+                avg_hours = round(total_employee_hours / len(active_employee_hours), 1)
 
             return JsonResponse({
                 'success': True,

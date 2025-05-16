@@ -291,13 +291,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 tableBody.classList.remove('loading');
             });
     }
-    
-    // Update the pending count in the stats
+      // Update the pending count in the stats and notification badge
     function updatePendingCount(entries) {
         const pendingCount = entries.filter(entry => entry.status === 'pending').length;
+        
+        // Update stats card
         const pendingCountElement = document.querySelector('.text-yellow-600');
         if (pendingCountElement) {
             pendingCountElement.textContent = pendingCount;
+        }
+        
+        // Update notification badge
+        const notificationBadge = document.getElementById('notificationBadge');
+        if (notificationBadge) {
+            if (pendingCount > 0) {
+                notificationBadge.textContent = pendingCount;
+                notificationBadge.classList.remove('hidden');
+            } else {
+                notificationBadge.classList.add('hidden');
+            }
         }
     }
     
@@ -565,9 +577,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             });
         });
-    }
-
-    // Function to update a specific entry in the table
+    }    // Function to update a specific entry in the table
     function updateEntryInTable(entryId, newStatus) {
         const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
         if (!row) return; // Entry not found in table
@@ -589,9 +599,53 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         // Update action buttons
-        const actionsCell = row.querySelector('td:last-child');
+        const actionsCell = row.querySelector('td:last-child div.flex');
         if (actionsCell) {
-            actionsCell.innerHTML = `<span class="text-gray-400">Already ${newStatus}</span>`;
+            // Create action buttons container
+            const actionButtonsHtml = `
+                <div>
+                    ${newStatus === 'pending' ?
+                        `<a href="#" class="approve-btn text-indigo-600 hover:text-indigo-900 mr-3" data-entry-id="${entryId}">Approve</a>
+                        <a href="#" class="reject-btn text-red-600 hover:text-red-900" data-entry-id="${entryId}">Reject</a>` :
+                        `<span class="text-gray-400">Already ${newStatus}</span>`
+                    }
+                </div>
+                <a href="#" class="delete-btn text-red-500 hover:text-red-700 hover:bg-red-50 ml-4 p-2 rounded-full transition-colors duration-200" data-entry-id="${entryId}" title="Delete entry">
+                    <i class="fas fa-trash"></i>
+                </a>
+            `;
+            actionsCell.innerHTML = actionButtonsHtml;
+
+            // Reattach event listeners if the entry is still pending
+            if (newStatus === 'pending') {
+                const approveBtn = actionsCell.querySelector('.approve-btn');
+                const rejectBtn = actionsCell.querySelector('.reject-btn');
+                if (approveBtn) {
+                    approveBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        approveTimeEntry(entryId);
+                    });
+                }
+                if (rejectBtn) {
+                    rejectBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        rejectTimeEntry(entryId);
+                    });
+                }
+            }
+
+            // Reattach delete button event listener
+            const deleteBtn = actionsCell.querySelector('.delete-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    showConfirmDialog(
+                        'Delete Time Entry',
+                        'Are you sure you want to delete this time entry? This action cannot be undone.',
+                        () => deleteTimeEntry(this.dataset.entryId)
+                    );
+                });
+            }
         }
     }
     
@@ -611,21 +665,45 @@ document.addEventListener('DOMContentLoaded', function () {
         
         return updatedCount;
     }
-    
-    // Function to adjust pending count by a delta
+      // Function to adjust pending count by a delta
     function updatePendingCountAdjust(delta) {
+        // Update stats card
         const pendingCountElement = document.querySelector('.text-yellow-600');
+        let newCount = 0;
         if (pendingCountElement) {
             const currentCount = parseInt(pendingCountElement.textContent) || 0;
-            pendingCountElement.textContent = Math.max(0, currentCount + delta);
+            newCount = Math.max(0, currentCount + delta);
+            pendingCountElement.textContent = newCount;
+        }
+        
+        // Update notification badge
+        const notificationBadge = document.getElementById('notificationBadge');
+        if (notificationBadge) {
+            if (newCount > 0) {
+                notificationBadge.textContent = newCount;
+                notificationBadge.classList.remove('hidden');
+            } else {
+                notificationBadge.classList.add('hidden');
+            }
         }
     }
-    
-    // Function to set pending count directly
+      // Function to set pending count directly
     function updatePendingCountReset(newCount) {
+        // Update stats card
         const pendingCountElement = document.querySelector('.text-yellow-600');
         if (pendingCountElement) {
             pendingCountElement.textContent = newCount;
+        }
+        
+        // Update notification badge
+        const notificationBadge = document.getElementById('notificationBadge');
+        if (notificationBadge) {
+            if (newCount > 0) {
+                notificationBadge.textContent = newCount;
+                notificationBadge.classList.remove('hidden');
+            } else {
+                notificationBadge.classList.add('hidden');
+            }
         }
     }
     

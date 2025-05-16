@@ -102,88 +102,147 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error loading departments:', error);
             });
-    }
-
-    // Function to load all employees
+    }    // Function to load all employees
     function loadAllEmployees() {
+    // Get the current month's start date and today's date for month-to-date calculation
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    monthStart.setHours(0, 0, 0, 0);  // Start of first day of month
+    
+    const today = new Date();  // Use new Date() to ensure we get current time
+    today.setHours(23, 59, 59, 999);  // End of current day
+    
+    // Format dates as YYYY-MM-DD
+    const monthStartStr = monthStart.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0];
+        
+        // Debug logging
+        console.log('Calculating month-to-date hours:', {
+            monthStart: monthStartStr,
+            today: todayStr,
+            timeRange: `${monthStart.toLocaleString()} to ${today.toLocaleString()}`
+        });
+        
         fetch('/api/employees/get/')
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.employees) {
-                    // Add console logs for debugging
-                    console.log("Raw employee data:", data.employees);
+                    // Debug log total number of employees
+                    console.log(`Found ${data.employees.length} employees to process`);
                     
-                    allEmployees = data.employees.map(emp => {
-                        // Debug each employee's department information
-                        console.log(`Employee: ${emp.full_name}, Department ID: ${emp.department_id}, Department: ${emp.department}`);
+                    const fetchPromises = data.employees.map(emp => {
+                        // Fetch all entries between start of month and today
+                        const url = `/api/time/entries/${emp.id}/?start_date=${monthStartStr}&end_date=${todayStr}`;
+                        console.log(`Fetching hours for ${emp.full_name}:`, url);
                         
-                        // Add calculated fields
-                        const regularHours = emp.total_hours ? (emp.total_hours > 40 ? 40 : emp.total_hours) : 0;
-                        const overtimeHours = emp.total_hours ? (emp.total_hours > 40 ? emp.total_hours - 40 : 0) : 0;
-                        const status = emp.status || (emp.total_hours >= 40 ? 'Complete' : 'Pending');
-
-                        return {
-                            ...emp,
-                            regular_hours: regularHours,
-                            overtime_hours: overtimeHours,
-                            status: status
-                        };
+                        return fetch(url)
+                            .then(response => response.json())
+                            .then(hoursData => {
+                                let totalHours = 0;
+                                let regularHours = 0;
+                                let overtimeHours = 0;                                if (hoursData.success && hoursData.entries) {
+                                    // Debug log raw entries
+                                    console.log(`Raw entries for ${emp.full_name}:`, hoursData.entries);
+                                    
+                                    // Calculate total hours
+                                    hoursData.entries.forEach(entry => {
+                                        const hours = parseFloat(entry.total_hours || 0);
+                                        if (isNaN(hours)) {
+                                            console.warn(`Invalid hours value for entry:`, entry);
+                                            return;
+                                        }
+                                        
+                                        totalHours += hours;
+                                        
+                                        console.log(`Adding ${hours} hours from entry on ${entry.date}`);
+                                    });
+                                    
+                                    // Log detailed hours breakdown
+                                    console.log(`Hours calculated for ${emp.full_name}:`, {
+                                        totalHours,
+                                        regularHours,
+                                        overtimeHours,
+                                        entriesCount: hoursData.entries.length,
+                                        dateRange: `${monthStartStr} to ${todayStr}`
+                                    });
+                                } else {
+                                    console.warn(`No entries or error for ${emp.full_name}:`, hoursData);
+                                }
+                                
+                                return {
+                                    ...emp,
+                                    total_hours: totalHours,
+                                    regular_hours: regularHours,
+                                    overtime_hours: overtimeHours
+                                };
+                            })
+                            .catch(error => {
+                                console.error(`Error fetching hours for ${emp.full_name}:`, error);
+                                return {
+                                    ...emp,
+                                    total_hours: 0,
+                                    regular_hours: 0,
+                                    overtime_hours: 0
+                                };
+                            });
                     });
 
-                    // Set filtered employees to all employees initially
-                    filteredEmployees = [...allEmployees];
-
-                    // Display employees
-                    displayEmployees();
+                    // Wait for all hour calculations
+                    return Promise.all(fetchPromises)
+                        .then(employeesWithHours => {
+                            // Debug log final results
+                            console.log('Final hours calculation results:', employeesWithHours.map(e => ({
+                                name: e.full_name,
+                                total: e.total_hours,
+                                regular: e.regular_hours,
+                                overtime: e.overtime_hours
+                            })));
+                            
+                            allEmployees = employeesWithHours;
+                            filteredEmployees = [...allEmployees];
+                            displayEmployees();
+                            // After loading employees, update department statistics
+                            if (departmentData.length > 0) {
+                                loadDepartmentStatistics(departmentData);
+                            }
+                        });
+                } else {
+                    console.error('Failed to fetch employees:', data);
+                    throw new Error('Failed to fetch employees');
                 }
             })
             .catch(error => {
                 console.error('Error loading employees:', error);
                 document.getElementById('no-employees-row').querySelector('td').textContent = 
                     'Error loading employee data. Please try again.';
-            });    }
-    
-    // Function to load department statistics
+            });
+    }
+      // Function to load department statistics
     function loadDepartmentStatistics(departments) {
-        // In a real application, you would fetch this data from an API
-        // For now, we'll simulate it with the data we have
+        // Use the pre-calculated hours from loadAllEmployees
+        const deptHours = {};
+        let totalHours = 0;
+        
+        // Sum hours by department
+        allEmployees.forEach(emp => {
+            if (emp.department_id && emp.total_hours) {
+                deptHours[emp.department_id] = (deptHours[emp.department_id] || 0) + emp.total_hours;
+                totalHours += emp.total_hours;
+            }
+        });
 
-        fetch('/api/departments/hours/')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.department_hours) {
-                    // Store department hours data for later use with the "View All" button
-                    window.departmentHoursData = data.department_hours;
-                    displayDepartmentStats(data.department_hours, showAllDepartments);
-                } else {
-                    // If the API doesn't exist or fails, generate dummy data based on employees
-                    const deptHours = {};
-                    let totalHours = 0;
-                    
-                    // Sum hours by department
-                    allEmployees.forEach(emp => {
-                        const deptId = emp.department_id || 'unknown';
-                        deptHours[deptId] = (deptHours[deptId] || 0) + (emp.total_hours || 0);
-                        totalHours += (emp.total_hours || 0);
-                    });
+        // Convert to array format for display
+        const departmentHours = departments.map(dept => ({
+            id: dept.id,
+            name: dept.name,
+            total_hours: deptHours[dept.id] || 0,
+            percentage: totalHours ? ((deptHours[dept.id] || 0) / totalHours * 100) : 0
+        }));
 
-                    // Convert to array format for display
-                    const departmentHours = departments.map(dept => ({
-                        id: dept.id,
-                        name: dept.name,
-                        total_hours: deptHours[dept.id] || 0,
-                        percentage: totalHours ? ((deptHours[dept.id] || 0) / totalHours * 100) : 0
-                    }));
-
-                    // Store department hours data for later use
-                    window.departmentHoursData = departmentHours;
-                    displayDepartmentStats(departmentHours, showAllDepartments);
-                }
-            })
-            .catch(error => {
-                console.error('Error loading department statistics:', error);
-                generateDummyDepartmentStats(departments);
-            });    }
+        // Store department hours data for later use
+        window.departmentHoursData = departmentHours;
+        displayDepartmentStats(departmentHours, showAllDepartments);
+    }
 
     // Function to generate dummy department stats if API fails
     function generateDummyDepartmentStats(departments) {
@@ -212,9 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Initially display only top 4 departments
         displayDepartmentStats(departmentHours, showAllDepartments);    }
       // Function to display department statistics
-    function displayDepartmentStats(departmentHours, showAll) {
-        // Default to false if showAll is not provided
-        showAll = showAll || false;
+    function displayDepartmentStats(departmentHours, showAll = false) {
         const container = document.getElementById('department-stats-container');
         container.innerHTML = ''; // Clear loading message
 
@@ -235,7 +292,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const deptDiv = document.createElement('div');
             deptDiv.innerHTML = `
                 <div class="flex justify-between mb-1">
-                    <span class="text-sm font-medium text-gray-700">${dept.name}</span>
+                    <div>
+                        <span class="text-sm font-medium text-gray-700">${dept.name}</span>
+                        <span class="text-xs text-gray-500 ml-2">(${dept.percentage.toFixed(1)}%)</span>
+                    </div>
                     <span class="text-sm font-medium text-gray-700">${dept.total_hours.toFixed(1)}h</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2.5">
@@ -342,7 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const tr = document.createElement('tr');
             tr.id = 'no-employees-row';
             tr.innerHTML = `
-                <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+                <td colspan="3" class="px-6 py-4 text-center text-gray-500">
                     No employees match your criteria
                 </td>
             `;
@@ -386,13 +446,11 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (emp.department) {
                 deptName = emp.department;
             }
-            
-            // Determine status class
-            const statusClass = emp.status === 'Complete' ? 
-                'bg-green-100 text-green-800' : 
-                emp.status === 'Rejected' ? 
-                    'bg-red-100 text-red-800' : 
-                    'bg-yellow-100 text-yellow-800';
+
+            // Format hours display
+            const totalHours = (emp.total_hours || 0).toFixed(1);
+            const regularHours = (emp.regular_hours || 0).toFixed(1);
+            const overtimeHours = (emp.overtime_hours || 0).toFixed(1);
             
             tr.innerHTML = `
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -409,14 +467,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deptName}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${(emp.total_hours || 0).toFixed(1)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${emp.regular_hours.toFixed(1)}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${emp.overtime_hours.toFixed(1)}</td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
-                        ${emp.status || 'Pending'}
-                    </span>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${deptName}</td>                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm">
+                        <span class="font-medium text-gray-900">${totalHours}h</span>
+                    </div>
                 </td>
             `;
             
