@@ -24,9 +24,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const cancelEmployeeSelectionBtn = document.getElementById('cancel-employee-selection');
         const applyEmployeeSelectionBtn = document.getElementById('apply-employee-selection');
         const recentExportsList = document.getElementById('recent-exports-list');
-        
-        // Set default date values (Last Week)
-        setDefaultDates();
+          // Set default date range to Current Month
+        dateRangePreset.value = 'this-month';
+        handleDateRangeChange();
         
         // Check initial state of export all employees checkbox and show/hide buttons accordingly
         if (!exportAllEmployeesCheckbox.checked) {
@@ -80,12 +80,21 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             handleExportSubmit(e);
         });
-        
-        // Validate form to ensure at least one include checkbox is checked
+          // Set up data inclusion checkboxes
         document.querySelectorAll('input[name^="include_"]').forEach(checkbox => {
-            checkbox.addEventListener('change', validateIncludeCheckboxes);
+            checkbox.addEventListener('change', function() {
+                validateIncludeCheckboxes();
+                // Trigger preview update if preview is visible
+                if (!previewContainer.classList.contains('hidden')) {
+                    handlePreviewData();
+                }
+            });
         });
-          // Load initial data and set up the form
+
+        // Add click handler for preview button
+        previewBtn.addEventListener('click', handlePreviewData);
+
+        // Load initial data and set up the form
         function setDefaultDates() {
             const today = new Date();
             const lastWeekStart = new Date(today);
@@ -347,26 +356,16 @@ document.addEventListener('DOMContentLoaded', function() {
             return true;
         }function handleDateRangeChange() {
             const selectedValue = dateRangePreset.value;
-            
             const today = new Date();
             let startDate, endDate;
             
+            // Handle visibility of custom date fields
             if (selectedValue === 'custom') {
-                customDateFields.classList.remove('hidden');
-                // If the date fields are empty, set them to a default (current week)
-                if (!startDateInput.value || !endDateInput.value) {
-                    startDate = new Date(today);
-                    startDate.setDate(today.getDate() - today.getDay()); // Start of current week
-                    endDate = today;
-                    
-                    startDateInput.value = formatDate(startDate);
-                    endDateInput.value = formatDate(endDate);
-                }
+                customDateFields.style.display = 'block';
                 return;
+            } else {
+                customDateFields.style.display = selectedValue ? 'block' : 'none';
             }
-            
-            // Show custom date fields for all options
-            customDateFields.classList.remove('hidden');
             
             switch (selectedValue) {
                 case 'this-week':

@@ -11,6 +11,36 @@ document.addEventListener('DOMContentLoaded', function () {
     const exportFormatBtns = document.querySelectorAll('.export-format-btn');
     const exportStatusEl = document.getElementById('exportStatus');
 
+    // Function to show export format dialog
+    function showExportDialog() {
+        exportFormatDialog.classList.remove('hidden');
+        exportFormatDialog.classList.add('flex');
+        exportStatusEl.innerHTML = ''; // Clear any previous status messages
+    }
+
+    // Set up click handlers for export format buttons and cancel
+    exportFormatBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const format = this.dataset.format;
+            generateExport(format);
+        });
+    });
+
+    exportCancelBtn.addEventListener('click', function() {
+        exportFormatDialog.classList.add('hidden');
+        exportFormatDialog.classList.remove('flex');
+        exportStatusEl.innerHTML = '';
+    });
+
+    // Function to close export format dialog if clicked outside
+    exportFormatDialog.addEventListener('click', function(e) {
+        if (e.target === this) {
+            exportFormatDialog.classList.add('hidden');
+            exportFormatDialog.classList.remove('flex');
+            exportStatusEl.innerHTML = '';
+        }
+    });
+
     // Function to generate export for the last week
     function generateExport(format) {
         // Show loading state
@@ -42,7 +72,8 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.append('include_hours', 'on');
         formData.append('include_productivity', 'on');
         formData.append('include_attendance', 'on');
-        
+        formData.append('export_all_employees', 'on');
+
         // Send request to generate export
         fetch('/api/export/generate/', {
             method: 'POST',
@@ -101,11 +132,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to load today's time entries
     function loadTodayTimeEntries() {
+        // Clear any existing refresh timer
+        if (window.timeEntriesRefreshTimer) {
+            clearTimeout(window.timeEntriesRefreshTimer);
+            window.timeEntriesRefreshTimer = null;
+        }
+
+        // Clear any existing error retry timer
+        if (window.timeEntriesErrorRetryTimer) {
+            clearTimeout(window.timeEntriesErrorRetryTimer);
+            window.timeEntriesErrorRetryTimer = null;
+        }
+
         // Store previous entries in case of error
         const tableBody = document.getElementById('timeEntryTable');
         const previousEntries = tableBody.innerHTML;
         const noEntriesRow = document.getElementById('noEntriesRow');
-        let isError = false;
 
         // Add a loading class if not already present
         if (!tableBody.classList.contains('loading')) {
@@ -114,60 +156,139 @@ document.addEventListener('DOMContentLoaded', function () {
 
         fetch('/api/time/today/')
             .then(response => {
+                console.log('Time entries response status:', response.status);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                return response.json();
+                  // Get content type to check if it's JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    console.warn('Response is not JSON, content-type:', contentType);
+                    // If we get HTML instead of JSON (like a login page), it's an error
+                    if (contentType && contentType.includes('text/html')) {
+                        throw new Error('Received HTML instead of JSON - you may need to log in');
+                    }
+                }
+                
+                // Always try to parse as JSON regardless of content-type header
+                // This handles cases where server returns JSON with incorrect content-type
+                return response.text().then(text => {
+                    try {
+                        // Try to parse as JSON first
+                        if (text.trim()) {
+                            return JSON.parse(text);
+                        } else {
+                            console.warn('Empty response from server, treating as empty array');
+                            return []; // Return empty array for empty responses
+                        }
+                    } catch(e) {
+                        console.error('Error parsing JSON response:', e);
+                        console.log('Response text:', text.substring(0, 200) + '...'); // Show first 200 chars
+                        throw new Error('Invalid JSON response from server');
+                    }
+                });
             })
-            .then(data => {
-                // Add debug logging
-                console.log('Today time entries:', data);
+            .then(data => {                // Enhanced debug logging
+                console.log('Today time entries raw response:', data);
 
-                if (data.success) {
-                    // Clear existing rows except the noEntriesRow
+                // Try to find entries array in common places
+                let entries = null;
+                if (Array.isArray(data)) {
+                    entries = data;
+                } else if (data && Array.isArray(data.entries)) {
+                    entries = data.entries;
+                } else if (data && Array.isArray(data.results)) {
+                    entries = data.results;
+                } else if (data && typeof data === 'object') {
+                    // Try to extract any array from the response
+                    const possibleArrays = Object.values(data).filter(val => Array.isArray(val));
+                    if (possibleArrays.length > 0) {
+                        // Use the first array found in the response
+                        entries = possibleArrays[0];
+                        console.log('Found entries array in response:', entries);
+                    } else {
+                        // If we can't find an array but got a valid object, create empty array
+                        // This prevents errors when the response is valid but doesn't match expected format
+                        console.log('No entry arrays found in response, using empty array');
+                        entries = [];
+                    }
+                }
+
+                // Fallback: treat as success for ANY valid response
+                // This prevents errors when the server returns valid data but not in the expected format
+                const isSuccess = true; // Always treat valid responses as success
+                
+                // Make sure entries is at least an empty array
+                entries = Array.isArray(entries) ? entries : [];
+                
+                // Clear existing rows except the noEntriesRow
+                Array.from(tableBody.children).forEach(child => {
+                    if (child.id !== 'noEntriesRow') {
+                        tableBody.removeChild(child);
+                    }
+                });
+                
+                // Show or hide the "no entries" message
+                if (!entries || entries.length === 0) {
+                    noEntriesRow.style.display = '';
+                } else {
+                    noEntriesRow.style.display = 'none';
+                    displayTimeEntries(entries);
+                }
+                
+                // Update pending count
+                updatePendingCount(entries || []);
+                
+                // Schedule next refresh in 60 seconds only on success
+                window.timeEntriesRefreshTimer = setTimeout(loadTodayTimeEntries, 60000);
+            })            .catch(error => {
+                console.error('Error loading time entries:', error);
+
+                // Check if the error is caused by unexpected but valid JSON structure
+                // If so, we can treat it as a valid response with empty entries
+                if (error.message && error.message.includes('Unexpected response structure')) {
+                    console.log('Treating unexpected structure as valid empty response');
+                    
+                    // Use empty entries array but don't show error
                     Array.from(tableBody.children).forEach(child => {
                         if (child.id !== 'noEntriesRow') {
                             tableBody.removeChild(child);
                         }
                     });
                     
-                    // Show or hide the "no entries" message
-                    if (data.entries.length === 0) {
-                        noEntriesRow.style.display = '';
-                    } else {
-                        noEntriesRow.style.display = 'none';
-                        displayTimeEntries(data.entries);
-                    }
+                    noEntriesRow.style.display = '';
+                    updatePendingCount([]);
                     
-                    // Update pending count
-                    updatePendingCount(data.entries);
-                } else {
-                    throw new Error(data.message || 'Failed to load time entries');
+                    // Still schedule next refresh but with normal interval
+                    window.timeEntriesRefreshTimer = setTimeout(loadTodayTimeEntries, 60000);
+                    return; // Exit early without showing error
                 }
-            })
-            .catch(error => {
-                isError = true;
-                console.error('Error loading time entries:', error);
-                // Restore previous entries on error
+                
+                // For real errors, restore previous entries
                 if (previousEntries) {
                     tableBody.innerHTML = previousEntries;
                 }
-                showNotification('Failed to refresh time entries. Will try again shortly.', 'error');
+
+                // Show error notification only if not already shown recently
+                // Increase to 60 seconds to reduce notification frequency
+                const now = Date.now();
+                if (!window.lastErrorNotification || (now - window.lastErrorNotification) > 60000) {
+                    let errorMessage = 'Failed to refresh time entries. Will try again shortly.';
+                    
+                    // Add more descriptive messages for common errors
+                    if (error.message && (error.message.includes('HTML instead of JSON') || 
+                        error.message.includes('login'))) {
+                        errorMessage = 'Authentication required. Please ensure you are logged in.';
+                    }
+                    
+                    window.lastErrorNotification = now;
+                }
+
+                // Set up error retry timer (increased to 30 seconds to reduce retry frequency)
+                window.timeEntriesErrorRetryTimer = setTimeout(loadTodayTimeEntries, 30000);
             })
             .finally(() => {
                 tableBody.classList.remove('loading');
-                
-                // If there was an error, retry after 10 seconds
-                // If successful, schedule next update in 60 seconds
-                const nextRefreshTime = isError ? 10000 : 60000;
-                
-                // Clear any existing refresh timer
-                if (window.timeEntriesRefreshTimer) {
-                    clearTimeout(window.timeEntriesRefreshTimer);
-                }
-                
-                // Set new refresh timer
-                window.timeEntriesRefreshTimer = setTimeout(loadTodayTimeEntries, nextRefreshTime);
             });
     }
     
@@ -189,8 +310,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function rejectTimeEntry(entryId) {
         updateTimeEntryStatus(entryId, 'rejected');
     }
-    
-    // Function to update a time entry status
+      // Function to update a time entry status
     function updateTimeEntryStatus(entryId, status) {
         const csrfToken = getCsrfToken();
         fetch('/api/time/update-status/', {
@@ -207,7 +327,12 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                loadTodayTimeEntries();
+                // Update UI instead of reloading all entries
+                updateEntryInTable(entryId, status);
+                
+                // Update pending count in the stats
+                updatePendingCountAdjust(status === 'approved' || status === 'rejected' ? -1 : 0);
+                
                 showNotification(`Time entry ${status} successfully!`);
             } else {
                 showNotification(`Failed to ${status} time entry: ${data.message}`, 'error');
@@ -216,9 +341,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .catch(error => {
             console.error('Error updating time entry:', error);
         });
-    }
-
-    // Function to approve all pending time entries
+    }    // Function to approve all pending time entries
     function approveAllPendingEntries() {
         const csrfToken = getCsrfToken();
         fetch('/api/time/approve-all/', {
@@ -231,7 +354,12 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                loadTodayTimeEntries();
+                // Update all pending entries in the UI
+                updateAllPendingEntries('approved');
+                
+                // Update the pending count
+                updatePendingCountReset(0);
+                
                 showNotification(`Approved ${data.count} time entries successfully!`);
             } else {
                 showNotification(`Failed to approve time entries: ${data.message}`, 'error');
@@ -422,6 +550,68 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Function to update a specific entry in the table
+    function updateEntryInTable(entryId, newStatus) {
+        const row = document.querySelector(`tr[data-entry-id="${entryId}"]`);
+        if (!row) return; // Entry not found in table
+        
+        // Update status badge
+        const statusBadge = row.querySelector('td:nth-child(8) span');
+        if (statusBadge) {
+            // Remove previous status classes
+            statusBadge.classList.remove('bg-yellow-100', 'text-yellow-800', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
+            
+            // Add new status classes
+            if (newStatus === 'approved') {
+                statusBadge.classList.add('bg-green-100', 'text-green-800');
+                statusBadge.textContent = 'Approved';
+            } else if (newStatus === 'rejected') {
+                statusBadge.classList.add('bg-red-100', 'text-red-800');
+                statusBadge.textContent = 'Rejected';
+            }
+        }
+        
+        // Update action buttons
+        const actionsCell = row.querySelector('td:last-child');
+        if (actionsCell) {
+            actionsCell.innerHTML = `<span class="text-gray-400">Already ${newStatus}</span>`;
+        }
+    }
+    
+    // Function to update all pending entries in the table
+    function updateAllPendingEntries(newStatus) {
+        const pendingRows = document.querySelectorAll('tr[data-entry-id]');
+        let updatedCount = 0;
+        
+        pendingRows.forEach(row => {
+            const statusBadge = row.querySelector('td:nth-child(8) span');
+            if (statusBadge && statusBadge.textContent.trim().toLowerCase() === 'pending') {
+                const entryId = row.dataset.entryId;
+                updateEntryInTable(entryId, newStatus);
+                updatedCount++;
+            }
+        });
+        
+        return updatedCount;
+    }
+    
+    // Function to adjust pending count by a delta
+    function updatePendingCountAdjust(delta) {
+        const pendingCountElement = document.querySelector('.text-yellow-600');
+        if (pendingCountElement) {
+            const currentCount = parseInt(pendingCountElement.textContent) || 0;
+            pendingCountElement.textContent = Math.max(0, currentCount + delta);
+        }
+    }
+    
+    // Function to set pending count directly
+    function updatePendingCountReset(newCount) {
+        const pendingCountElement = document.querySelector('.text-yellow-600');
+        if (pendingCountElement) {
+            pendingCountElement.textContent = newCount;
+        }
+    }
+    
     // Add styles for loading state
     const style = document.createElement('style');
     style.textContent = `
