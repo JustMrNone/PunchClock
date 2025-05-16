@@ -600,10 +600,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: formData
             })
-                .then(response => response.json())
-                .then(data => {
+                .then(response => response.json())                .then(data => {
                     if (data.success) {
-                        renderPreviewTable(data.data);
+                        renderPreviewTable(data.data, data.total_rows, data.preview_rows);
                     } else {
                         previewContent.innerHTML = `
                             <div class="text-center py-8">
@@ -624,7 +623,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         }
         
-        function renderPreviewTable(data) {
+        function renderPreviewTable(data, totalRows, previewRows) {
             if (!data || data.length === 0) {
                 previewContent.innerHTML = `
                     <div class="text-center py-8">
@@ -654,10 +653,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
             `;
-            
-            // Add rows (limit to 10 for preview)
-            const previewData = data.slice(0, 10);
-            previewData.forEach(row => {
+              // Add rows
+            data.forEach(row => {
                 tableHTML += `<tr>`;
                 headers.forEach(header => {
                     const value = row[header] !== null ? row[header] : '—';
@@ -671,11 +668,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 </table>
             `;
             
-            // If we have more than 10 rows, add a note
-            if (data.length > 10) {
+            // Add preview information message
+            if (totalRows > previewRows) {
                 tableHTML += `
-                    <div class="text-center py-4 text-sm text-gray-500">
-                        Showing 10 of ${data.length} rows. Export to see all data.
+                    <div class="flex justify-between items-center py-4 px-6 bg-blue-50 text-sm text-blue-700 mt-4 rounded-lg">
+                        <div>
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Showing ${previewRows} of ${totalRows} total rows. Generate the export to see all data.
+                        </div>
                     </div>
                 `;
             }
@@ -892,9 +892,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         handleExportSubmit(e);
-    });
-    
-    // Set up date range change handlers
+    });        // Set up date range change handlers
         dateRangePreset.addEventListener('change', function() {
             handleDateRangeChange();
             if (previewContainer.classList.contains('hidden') === false) {
@@ -909,6 +907,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         endDateInput.addEventListener('change', function() {
+            if (previewContainer.classList.contains('hidden') === false) {
+                handlePreviewData();
+            }
+        });
+
+        // Add group by change handler
+        document.getElementById('group-by').addEventListener('change', function() {
             if (previewContainer.classList.contains('hidden') === false) {
                 handlePreviewData();
             }

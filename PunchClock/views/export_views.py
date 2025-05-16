@@ -140,14 +140,24 @@ class ExportPreviewView(View):
                     
                     role = 'Manager' if emp.user.is_staff else 'Employee'
                     status = 'Active' if emp_entries.exists() else 'Inactive'
-                    data.append({
+                    
+                    # Build data object based on included fields
+                    row_data = {
                         'employee': emp.full_name,
                         'role': role,
                         'department': emp.department.name if emp.department else 'N/A',
-                        'total_hours': round(total_hours, 2),
-                        'attendance_rate': round(attendance_rate, 1),
                         'status': status
-                    })
+                    }
+                    if include_hours:
+                        row_data['total_hours'] = round(total_hours, 2)
+                    if include_attendance:
+                        row_data['attendance_rate'] = round(attendance_rate, 1)
+                    if include_productivity:
+                        # Calculate average hours per day in the date range
+                        days_in_range = (end_date - start_date).days + 1
+                        row_data['productivity'] = round(total_hours / days_in_range, 2) if total_hours > 0 else 0
+                    
+                    data.append(row_data)
 
             elif group_by == 'department':
                 departments = Department.objects.filter(
@@ -157,19 +167,26 @@ class ExportPreviewView(View):
                     dept_entries = entries.filter(employee__department=dept)
                     total_hours = 0
                     avg_hours = 0
-                    employee_count = employees.filter(department=dept).count()
+                    employee_count = dept_entries.values('employee').distinct().count()
                     
                     if dept_entries.exists():
                         total_hours = sum(float(entry.total_hours or 0) for entry in dept_entries)
                         if employee_count > 0:
                             avg_hours = total_hours / employee_count
                     
-                    data.append({
+                    # Build data object based on included fields
+                    row_data = {
                         'department': dept.name,
-                        'employee_count': employee_count,
-                        'total_hours': round(total_hours, 2),
-                        'average_hours': round(avg_hours, 2)
-                    })
+                        'employee_count': employee_count
+                    }
+                    if include_hours:
+                        row_data['total_hours'] = round(total_hours, 2)
+                        row_data['average_hours'] = round(avg_hours, 2)
+                    if include_productivity:
+                        days_in_range = (end_date - start_date).days + 1
+                        row_data['department_productivity'] = round(total_hours / (days_in_range * employee_count), 2) if total_hours > 0 and employee_count > 0 else 0
+                    
+                    data.append(row_data)
 
             else:  # group by day/week/month
                 date_groups = {}
@@ -194,17 +211,40 @@ class ExportPreviewView(View):
                         date_groups[key]['approved_count'] += 1
 
                 for date_key, stats in date_groups.items():
-                    data.append({
-                        'period': date_key.strftime('%Y-%m-%d'),
-                        'total_hours': round(stats['total_hours'], 2),
-                        'total_entries': stats['entry_count'],
-                        'approval_rate': round(stats['approved_count'] / stats['entry_count'] * 100, 1) if stats['entry_count'] > 0 else 0
-                    })
+                    # Build data object based on included fields
+                    row_data = {
+                        'period': date_key.strftime('%Y-%m-%d')
+                    }
+                    if include_hours:
+                        row_data['total_hours'] = round(stats['total_hours'], 2)
+                    if include_attendance:
+                        row_data['total_entries'] = stats['entry_count']
+                        row_data['approval_rate'] = round(stats['approved_count'] / stats['entry_count'] * 100, 1) if stats['entry_count'] > 0 else 0
+                    if include_productivity:
+                        active_employees = entries.filter(date=date_key).values('employee').distinct().count()
+                        row_data['productivity'] = round(stats['total_hours'] / active_employees, 2) if active_employees > 0 else 0
+                    
+                    data.append(row_data)
+
+            # Sort data by the most relevant field based on group_by
+            if group_by == 'employee':
+                data.sort(key=lambda x: x['employee'])
+            elif group_by == 'department':
+                data.sort(key=lambda x: x['department'])
+            else:  # day/week/month
+                data.sort(key=lambda x: x['period'])
+
+            total_rows = len(data)
+            preview_rows = data[:10]  # Get first 10 rows for preview
 
             return JsonResponse({
                 'success': True,
-                'data': data[:10]  # Return first 10 rows for preview
+                'data': preview_rows,
+                'total_rows': total_rows,
+                'preview_rows': len(preview_rows),
+                'is_preview': True
             })
+
         except Exception as e:
             return JsonResponse({
                 'success': False,
@@ -310,14 +350,24 @@ class ExportGenerateView(View):
                     
                     role = 'Manager' if emp.user.is_staff else 'Employee'
                     status = 'Active' if emp_entries.exists() else 'Inactive'
-                    data.append({
+                    
+                    # Build data object based on included fields
+                    row_data = {
                         'employee': emp.full_name,
                         'role': role,
                         'department': emp.department.name if emp.department else 'N/A',
-                        'total_hours': round(total_hours, 2),
-                        'attendance_rate': round(attendance_rate, 1),
                         'status': status
-                    })
+                    }
+                    if include_hours:
+                        row_data['total_hours'] = round(total_hours, 2)
+                    if include_attendance:
+                        row_data['attendance_rate'] = round(attendance_rate, 1)
+                    if include_productivity:
+                        # Calculate average hours per day in the date range
+                        days_in_range = (end_date - start_date).days + 1
+                        row_data['productivity'] = round(total_hours / days_in_range, 2) if total_hours > 0 else 0
+                    
+                    data.append(row_data)
             elif group_by == 'department':
                 departments = Department.objects.filter(
                     id__in=entries.values_list('employee__department_id', flat=True)
@@ -333,12 +383,19 @@ class ExportGenerateView(View):
                             if employee_count > 0:
                                 avg_hours = total_hours / employee_count
                         
-                        data.append({
+                        # Build data object based on included fields
+                        row_data = {
                             'department': dept.name,
-                            'employee_count': employee_count,
-                            'total_hours': round(total_hours, 2),
-                            'average_hours': round(avg_hours, 2)
-                        })
+                            'employee_count': employee_count
+                        }
+                        if include_hours:
+                            row_data['total_hours'] = round(total_hours, 2)
+                            row_data['average_hours'] = round(avg_hours, 2)
+                        if include_productivity:
+                            days_in_range = (end_date - start_date).days + 1
+                            row_data['department_productivity'] = round(total_hours / (days_in_range * employee_count), 2) if total_hours > 0 and employee_count > 0 else 0
+                        
+                        data.append(row_data)
             else:  # group by day/week/month
                 date_groups = {}
                 for entry in entries:
@@ -362,12 +419,20 @@ class ExportGenerateView(View):
                         date_groups[key]['approved_count'] += 1
 
                 for date_key, stats in date_groups.items():
-                    data.append({
-                        'period': date_key.strftime('%Y-%m-%d'),
-                        'total_hours': round(stats['total_hours'], 2),
-                        'total_entries': stats['entry_count'],
-                        'approval_rate': round(stats['approved_count'] / stats['entry_count'] * 100, 1) if stats['entry_count'] > 0 else 0
-                    })
+                    # Build data object based on included fields
+                    row_data = {
+                        'period': date_key.strftime('%Y-%m-%d')
+                    }
+                    if include_hours:
+                        row_data['total_hours'] = round(stats['total_hours'], 2)
+                    if include_attendance:
+                        row_data['total_entries'] = stats['entry_count']
+                        row_data['approval_rate'] = round(stats['approved_count'] / stats['entry_count'] * 100, 1) if stats['entry_count'] > 0 else 0
+                    if include_productivity:
+                        active_employees = entries.filter(date=date_key).values('employee').distinct().count()
+                        row_data['productivity'] = round(stats['total_hours'] / active_employees, 2) if active_employees > 0 else 0
+                    
+                    data.append(row_data)
 
             if not data:
                 return JsonResponse({
