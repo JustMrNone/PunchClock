@@ -522,19 +522,24 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
                         ${entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
                     </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    ${entry.status === 'pending' ?
-                        `<a href="#" class="approve-btn text-indigo-600 hover:text-indigo-900 mr-3" data-entry-id="${entry.id}">Approve</a>
-                        <a href="#" class="reject-btn text-red-600 hover:text-red-900" data-entry-id="${entry.id}">Reject</a>` :
-                        `<span class="text-gray-400">Already ${entry.status}</span>`
-                    }
+                </td>                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            ${entry.status === 'pending' ?
+                                `<a href="#" class="approve-btn text-indigo-600 hover:text-indigo-900 mr-3" data-entry-id="${entry.id}">Approve</a>
+                                <a href="#" class="reject-btn text-red-600 hover:text-red-900" data-entry-id="${entry.id}">Reject</a>` :
+                                `<span class="text-gray-400">Already ${entry.status}</span>`
+                            }
+                        </div>
+                        <a href="#" class="delete-btn text-red-500 hover:text-red-700 hover:bg-red-50 ml-4 p-2 rounded-full transition-colors duration-200" data-entry-id="${entry.id}" title="Delete entry">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </div>
                 </td>
             `;
             tableBody.appendChild(tr);
         });
-        
-        // Add event listeners to approve/reject buttons
+          // Add event listeners to approve/reject buttons
         document.querySelectorAll('.approve-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -546,6 +551,18 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.addEventListener('click', function(e) {
                 e.preventDefault();
                 rejectTimeEntry(this.dataset.entryId);
+            });
+        });
+        
+        // Add event listeners to delete buttons
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                showConfirmDialog(
+                    'Delete Time Entry',
+                    'Are you sure you want to delete this time entry? This action cannot be undone.',
+                    () => deleteTimeEntry(this.dataset.entryId)
+                );
             });
         });
     }
