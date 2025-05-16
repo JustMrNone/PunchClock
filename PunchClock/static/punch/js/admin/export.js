@@ -1,4 +1,4 @@
-    document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
         const dateRangePreset = document.getElementById('date-range-preset');
         const customDateFields = document.getElementById('custom-date-fields');
         const startDateInput = document.getElementById('start-date');
@@ -68,14 +68,18 @@
         employeeSearch.addEventListener('input', filterEmployeeList);
         departmentFilterSelect.addEventListener('change', filterEmployeeList);
         selectAllEmployeesCheckbox.addEventListener('change', toggleSelectAllEmployees);
-        
-        // Data preview and export
-        previewBtn.addEventListener('click', handlePreviewData);
+          // Data preview and export
         closePreviewBtn.addEventListener('click', () => {
             previewContainer.classList.add('hidden');
         });
         
-        exportForm.addEventListener('submit', handleExportSubmit);
+        exportForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (!validateEmployeeSelection()) {
+                return;
+            }
+            handleExportSubmit(e);
+        });
         
         // Validate form to ensure at least one include checkbox is checked
         document.querySelectorAll('input[name^="include_"]').forEach(checkbox => {
@@ -341,19 +345,25 @@
                 alert('At least one data type must be selected for export.');
             }
         }
-        
-        function handleDateRangeChange() {
+          function handleDateRangeChange() {
             const selectedValue = dateRangePreset.value;
-            
-            if (selectedValue === 'custom') {
-                customDateFields.classList.remove('hidden');
-                return;
-            }
-            
-            customDateFields.classList.add('hidden');
             
             const today = new Date();
             let startDate, endDate;
+            
+            // If custom range is selected, don't overwrite the existing dates
+            if (selectedValue === 'custom') {
+                // If the date fields are empty, set them to a default (current week)
+                if (!startDateInput.value || !endDateInput.value) {
+                    startDate = new Date(today);
+                    startDate.setDate(today.getDate() - today.getDay()); // Start of current week
+                    endDate = today;
+                    
+                    startDateInput.value = formatDate(startDate);
+                    endDateInput.value = formatDate(endDate);
+                }
+                return;
+            }
             
             switch (selectedValue) {
                 case 'this-week':
@@ -398,8 +408,7 @@
                     startDate = new Date(year, quarter * 3, 1);
                     endDate = new Date(year, (quarter + 1) * 3, 0);
                     break;
-            }
-            
+            }            
             startDateInput.value = formatDate(startDate);
             endDateInput.value = formatDate(endDate);
         }
@@ -548,10 +557,18 @@
                 </div>
             `;
             previewContainer.classList.remove('hidden');
-            
-            // Collect form data
+              // Collect form data
             const formData = new FormData(exportForm);
             formData.append('preview', 'true');
+            
+            // Add export type info
+            const exportType = exportAllEmployeesCheckbox.checked ? 'all' : 'selected';
+            formData.append('export_type', exportType);
+            
+            // If specific employees are selected, ensure their IDs are included
+            if (!exportAllEmployeesCheckbox.checked && selectedEmployeeIdsInput.value) {
+                formData.append('employee_ids', selectedEmployeeIdsInput.value);
+            }
             
             // Use fetch to get preview data
             fetch('/api/export/preview/', {
@@ -679,9 +696,17 @@
                     Generating export...
                 </div>
             `;
-            
-            // Collect form data
+              // Collect form data
             const formData = new FormData(exportForm);
+            
+            // Add export type info
+            const exportType = exportAllEmployeesCheckbox.checked ? 'all' : 'selected';
+            formData.append('export_type', exportType);
+            
+            // If specific employees are selected, ensure their IDs are included
+            if (!exportAllEmployeesCheckbox.checked && selectedEmployeeIdsInput.value) {
+                formData.append('employee_ids', selectedEmployeeIdsInput.value);
+            }
             
             // Use fetch to submit the export request
             fetch('/api/export/generate/', {
@@ -810,4 +835,30 @@
             }
             return cookieValue;
         }
+        
+        // Function to validate employee selection
+    function validateEmployeeSelection() {
+        if (!exportAllEmployeesCheckbox.checked && !selectedEmployeeIdsInput.value.trim()) {
+            showNotification('Please select at least one employee or check "Export All Employees"', 'error');
+            return false;
+        }
+        return true;
+    }
+
+    // Add validation before preview or export
+    previewBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (!validateEmployeeSelection()) {
+            return;
+        }
+        handlePreviewData(e);
+    });
+
+    exportBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (!validateEmployeeSelection()) {
+            return;
+        }
+        handleExportSubmit(e);
+    });
     });

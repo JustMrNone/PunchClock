@@ -33,8 +33,7 @@
                     
                     <!-- Date Range -->
                     <div class="mb-4">
-                        <label for="date-range-preset" class="block text-sm font-medium text-gray-700">Date Range</label>
-                        <select id="date-range-preset" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-2">
+                        <label for="date-range-preset" class="block text-sm font-medium text-gray-700">Date Range</label>                        <select id="date-range-preset" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-2">
                             <option value="last-week">Last Week</option>
                             <option value="this-week">Current Week</option>
                             <option value="last-month">Last Month</option>
@@ -45,8 +44,14 @@
                         </select>
                         
                         <div id="custom-date-fields">
-                            <input type="date" id="start-date" name="start_date" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 mb-2">
-                            <input type="date" id="end-date" name="end_date" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <div class="mb-2">
+                                <label for="start-date" class="block text-sm font-medium text-gray-700">Start Date</label>
+                                <input type="date" id="start-date" name="start_date" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="end-date" class="block text-sm font-medium text-gray-700">End Date</label>
+                                <input type="date" id="end-date" name="end_date" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
                         </div>
                     </div>
                 </div>

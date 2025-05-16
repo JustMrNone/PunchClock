@@ -60,6 +60,8 @@ class ExportPreviewView(View):
             filter_type = request.POST.get('filter_type')
             department_id = request.POST.get('department')
             employee_id = request.POST.get('employee')
+            export_all = request.POST.get('export_all_employees') == 'on'
+            selected_employee_ids = request.POST.get('selected_employee_ids', '')
 
             # Validate dates
             try:
@@ -75,12 +77,13 @@ class ExportPreviewView(View):
                 return JsonResponse({
                     'success': False,
                     'message': 'End date must be after start date'
-                }, status=400)            # Get admin's own employee record first
+                }, status=400)
+
+            # Get admin's own employee record
             admin_employee = None
             try:
                 admin_employee = Employee.objects.get(user=request.user)
             except Employee.DoesNotExist:
-                # Create employee record for admin if it doesn't exist
                 department = Department.objects.get_or_create(name="Management")[0]
                 admin_employee = Employee.objects.create(
                     user=request.user,
@@ -89,12 +92,24 @@ class ExportPreviewView(View):
                     hire_date=timezone.now().date()
                 )
 
-            # Get all employees managed by this admin and include admin's record
-            employees = list(Employee.objects.filter(admin=request.user))
-            if admin_employee not in employees:
-                employees.append(admin_employee)
+            # Handle employee selection based on export type
+            if export_all:
+                # Get all employees managed by this admin
+                employees = list(Employee.objects.filter(admin=request.user))
+                if admin_employee not in employees:
+                    employees.append(admin_employee)
+            else:
+                # Get only selected employees
+                if not selected_employee_ids.strip():
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Please select at least one employee or check "Export All Employees"'
+                    }, status=400)
+                
+                employee_ids = [int(id) for id in selected_employee_ids.split(',') if id.strip()]
+                employees = list(Employee.objects.filter(id__in=employee_ids))
 
-            # Get time entries for all employees including admin
+            # Get time entries for the selected employees
             entries = TimeEntry.objects.filter(
                 date__range=[start_date, end_date],
                 employee__in=employees
@@ -211,16 +226,38 @@ class ExportGenerateView(View):
             # Get form data
             format = request.POST.get('format')
             group_by = request.POST.get('group_by')
-            start_date = datetime.strptime(request.POST.get('start_date'), '%Y-%m-%d').date()
-            end_date = datetime.strptime(request.POST.get('end_date'), '%Y-%m-%d').date()
+            start_date = request.POST.get('start_date')
+            end_date = request.POST.get('end_date')
+            include_hours = request.POST.get('include_hours') == 'on'
+            include_productivity = request.POST.get('include_productivity') == 'on'
+            include_attendance = request.POST.get('include_attendance') == 'on'
             filter_type = request.POST.get('filter_type')
             department_id = request.POST.get('department')
-            employee_id = request.POST.get('employee')            # Get admin's own employee record first
+            employee_id = request.POST.get('employee')
+            export_all = request.POST.get('export_all_employees') == 'on'
+            selected_employee_ids = request.POST.get('selected_employee_ids', '')
+
+            # Validate dates
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid date format'
+                }, status=400)
+
+            if end_date < start_date:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'End date must be after start date'
+                }, status=400)
+
+            # Get admin's own employee record
             admin_employee = None
             try:
                 admin_employee = Employee.objects.get(user=request.user)
             except Employee.DoesNotExist:
-                # Create employee record for admin if it doesn't exist
                 department = Department.objects.get_or_create(name="Management")[0]
                 admin_employee = Employee.objects.create(
                     user=request.user,
@@ -229,12 +266,24 @@ class ExportGenerateView(View):
                     hire_date=timezone.now().date()
                 )
 
-            # Get all employees managed by this admin and include admin's record
-            employees = list(Employee.objects.filter(admin=request.user))
-            if admin_employee not in employees:
-                employees.append(admin_employee)
+            # Handle employee selection based on export type
+            if export_all:
+                # Get all employees managed by this admin
+                employees = list(Employee.objects.filter(admin=request.user))
+                if admin_employee not in employees:
+                    employees.append(admin_employee)
+            else:
+                # Get only selected employees
+                if not selected_employee_ids.strip():
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Please select at least one employee or check "Export All Employees"'
+                    }, status=400)
+                
+                employee_ids = [int(id) for id in selected_employee_ids.split(',') if id.strip()]
+                employees = list(Employee.objects.filter(id__in=employee_ids))
 
-            # Get time entries for all employees including admin
+            # Get time entries for the selected employees
             entries = TimeEntry.objects.filter(
                 date__range=[start_date, end_date],
                 employee__in=employees

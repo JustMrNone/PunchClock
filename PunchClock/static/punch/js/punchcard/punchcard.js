@@ -25,26 +25,30 @@ document.addEventListener('DOMContentLoaded', function () {
     let todayTotalHours = 0;           // Track total hours worked today across all segments
     let currentEntryId = null;         // Track the ID of the entry being edited
     let isEditMode = false;            // Flag to track if we're in edit mode
-    
-    // Sample quotes
-    const quotes = [
-        {
-            text: "Success is not final, failure is not fatal: It is the courage to continue that counts.",
-            author: "Winston Churchill"
-        },
-        {
-            text: "The way to get started is to quit talking and begin doing.",
-            author: "Walt Disney"
-        },
-        {
-            text: "The future depends on what you do today.",
-            author: "Mahatma Gandhi"
-        },
-        {
-            text: "Don't watch the clock; do what it does. Keep going.",
-            author: "Sam Levenson"
+      // Load quotes from JSON file
+    let quotes = [];
+
+    // Function to load quotes from JSON file
+    async function loadQuotes() {
+        try {
+            const response = await fetch('/static/punch/js/punchcard/quotes.json');
+            if (!response.ok) {
+                throw new Error('Failed to load quotes');
+            }
+            const data = await response.json();
+            quotes = data.quotes;
+            // Set initial quote once quotes are loaded
+            setRandomQuote();
+        } catch (error) {
+            console.error('Error loading quotes:', error);
+            // Fallback quote in case of error
+            quotes = [{
+                text: "Time is of the essence",
+                author: "Unknown"
+            }];
+            setRandomQuote();
         }
-    ];
+    }
 
     // Set random quote
     function setRandomQuote() {
@@ -688,15 +692,14 @@ document.addEventListener('DOMContentLoaded', function () {
         
         calculateTotalHours();
         showNotification(`End time set to ${currentTime}, ready to submit`);
-    });
-
-    // Initialize everything
-    function init() {
+    });    // Initialize everything
+    async function init() {
         // Initialize session ID first
         sessionId = generateSessionId();
         console.log("Session ID initialized:", sessionId);
         
-        setRandomQuote();
+        // Load quotes first
+        await loadQuotes();
         
         // Make time inputs visually read-only
         startTimeInput.readOnly = true;

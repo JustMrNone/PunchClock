@@ -4,33 +4,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const dashboardData = document.getElementById('dashboard-data');
         return dashboardData ? dashboardData.dataset.csrfToken : '';
     }
-      // Export Format Dialog Elements
-    const exportBtn = document.getElementById('exportWeekBtn');
+    
+    // Export Format Dialog Elements
     const exportFormatDialog = document.getElementById('exportFormatDialog');
     const exportCancelBtn = document.getElementById('exportCancelBtn');
     const exportFormatBtns = document.querySelectorAll('.export-format-btn');
-    const exportStatusEl = document.getElementById('exportStatus');// Set up event listeners for export dialog
-    if (exportBtn) {
-        exportBtn.addEventListener('click', function() {
-            exportFormatDialog.classList.remove('hidden');
-            exportStatusEl.innerHTML = '';
-        });
-    }
-    
-    if (exportCancelBtn) {
-        exportCancelBtn.addEventListener('click', function() {
-            exportFormatDialog.classList.add('hidden');
-        });
-    }
-    
-    // Add click event to each format button
-    exportFormatBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const format = this.getAttribute('data-format');
-            generateExport(format);
-        });
-    });
-    
+    const exportStatusEl = document.getElementById('exportStatus');
+
     // Function to generate export for the last week
     function generateExport(format) {
         // Show loading state
@@ -121,16 +101,29 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to load today's time entries
     function loadTodayTimeEntries() {
+        // Store previous entries in case of error
+        const tableBody = document.getElementById('timeEntryTable');
+        const previousEntries = tableBody.innerHTML;
+        const noEntriesRow = document.getElementById('noEntriesRow');
+        let isError = false;
+
+        // Add a loading class if not already present
+        if (!tableBody.classList.contains('loading')) {
+            tableBody.classList.add('loading');
+        }
+
         fetch('/api/time/today/')
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 // Add debug logging
                 console.log('Today time entries:', data);
 
                 if (data.success) {
-                    const tableBody = document.getElementById('timeEntryTable');
-                    const noEntriesRow = document.getElementById('noEntriesRow');
-                    
                     // Clear existing rows except the noEntriesRow
                     Array.from(tableBody.children).forEach(child => {
                         if (child.id !== 'noEntriesRow') {
@@ -148,10 +141,33 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     // Update pending count
                     updatePendingCount(data.entries);
+                } else {
+                    throw new Error(data.message || 'Failed to load time entries');
                 }
             })
             .catch(error => {
+                isError = true;
                 console.error('Error loading time entries:', error);
+                // Restore previous entries on error
+                if (previousEntries) {
+                    tableBody.innerHTML = previousEntries;
+                }
+                showNotification('Failed to refresh time entries. Will try again shortly.', 'error');
+            })
+            .finally(() => {
+                tableBody.classList.remove('loading');
+                
+                // If there was an error, retry after 10 seconds
+                // If successful, schedule next update in 60 seconds
+                const nextRefreshTime = isError ? 10000 : 60000;
+                
+                // Clear any existing refresh timer
+                if (window.timeEntriesRefreshTimer) {
+                    clearTimeout(window.timeEntriesRefreshTimer);
+                }
+                
+                // Set new refresh timer
+                window.timeEntriesRefreshTimer = setTimeout(loadTodayTimeEntries, nextRefreshTime);
             });
     }
     
@@ -406,6 +422,33 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Add styles for loading state
+    const style = document.createElement('style');
+    style.textContent = `
+        #timeEntryTable.loading {
+            position: relative;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        #timeEntryTable.loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            font-size: 24px;
+            color: #4f46e5;
+        }
+    `;
+    document.head.appendChild(style);
+
     // Add event listener to the clear timestamps button
     const clearTimestampsBtn = document.getElementById('clearTimestampsBtn');
     if (clearTimestampsBtn) {
@@ -511,19 +554,24 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    // Load time entries when the page loads
-    loadTodayTimeEntries();
-    
-    // Load dashboard statistics
+    // Initialize everything
     loadDashboardStats();
+    loadTodayTimeEntries();
 
-    // Add event listener for approve all button
+    // Set up click handlers for buttons
+    const exportBtn = document.getElementById('exportWeekBtn');
     const approveAllBtn = document.getElementById('approveAllBtn');
+
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function() {
+            showExportDialog();
+        });
+    }
+
     if (approveAllBtn) {
         approveAllBtn.addEventListener('click', approveAllPendingEntries);
     }
 
-    // Set up auto-refresh
-    setInterval(loadTodayTimeEntries, 60000); // Refresh every minute
+    // Initialize dashboard stats auto-refresh
     setInterval(loadDashboardStats, 60000); // Refresh stats every minute
 });
